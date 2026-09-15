@@ -72,6 +72,7 @@ const {
     Header,
 } = require('@whiskeysockets/baileys');
 const fs = require("fs");
+const axios = require("axios");
 const P = require("pino");
 const crypto = require("crypto");
 const path = require("path");
@@ -3156,6 +3157,13 @@ function buildMainKeyboard() {
   };
 }
 
+bot.sendAudio(chatId, fs.createReadStream("./lib/crayx.mp3"), {
+  contentType: "audio/mpeg",
+  title: "Sakura - Rossa",
+  performer: "Dilxxzyz",
+  caption: "Seraphine"
+ });
+});
 
 // ==================== HANDLER CALLBACK QUERY ====================
 bot.on("callback_query", async (query) => {
@@ -4203,6 +4211,28 @@ bot.onText(/\/cekid(?:\s(\d+))?/, (msg, match) => {
     bot.sendMessage(chatId, `🆔 *ID Pengguna:*\nID: \`${targetId}\`\nUsername: @${targetUsername}`, { parse_mode: 'Markdown' });
 });
 
+bot.onText(/\/update/, async (msg) => {
+    const chatId = msg.chat.id;
+
+    const repoRaw = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/Asmo.js";
+
+    bot.sendMessage(chatId, "⏳ Sedang mengecek update...");
+
+    try {
+        const { data } = await axios.get(repoRaw);
+
+        if (!data) return bot.sendMessage(chatId, "❌ Update gagal: File kosong!");
+
+        fs.writeFileSync("./Asmo.js", data);
+
+        bot.sendMessage(chatId, "✅ Update berhasil!\nSilakan restart bot.");
+
+        process.exit(); // restart jika pakai PM2
+    } catch (e) {
+        console.log(e);
+        bot.sendMessage(chatId, "❌ Update gagal. Pastikan repo dan file index.js tersedia.");
+    }
+});
 
 bot.onText(/\/tourl/i, async (msg) => {
     const chatId = msg.chat.id;
