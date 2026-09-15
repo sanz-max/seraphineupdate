@@ -72,7 +72,6 @@ const {
     Header,
 } = require('@whiskeysockets/baileys');
 const fs = require("fs");
-const axios = require("axios");
 const P = require("pino");
 const crypto = require("crypto");
 const path = require("path");
