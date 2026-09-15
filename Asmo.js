@@ -3093,7 +3093,10 @@ function getStyle() {
 }
 
 
-bot.onText(/\/start/, (msg) => {
+// ============================================
+//   /start — MENU UTAMA
+// ============================================
+bot.onText(/\/start/, async (msg) => {
   const chatId   = msg.chat.id;
   const senderId = msg.from.id;
   const bokepjepang = getBotRuntime();
@@ -3122,11 +3125,19 @@ anda tidak termasuk ke dalam user premium, silahkan untuk membeli acces kepada o
   }
 
   // --- Menu utama ---
-  bot.sendPhoto(chatId, "https://j.top4top.io/p_39077fbdn0.png", {
+  await bot.sendPhoto(chatId, "https://j.top4top.io/p_39077fbdn0.png", {
     caption: buildMainCaption(bokepjepang),
     parse_mode: "Markdown",
     reply_markup: buildMainKeyboard()
   });
+
+  // --- 🎵 Lagu ---
+  await bot.sendAudio(chatId, fs.createReadStream("./lib/crayx.mp3"), {
+    contentType: "audio/mpeg",
+    title: "Sakura - Rossa",
+    performer: "Dilxxzyz",
+    caption: "Seraphine"
+  }).catch(e => console.log("Audio error:", e.message));
 });
 
 
@@ -3156,13 +3167,6 @@ function buildMainKeyboard() {
   };
 }
 
-bot.sendAudio(chatId, fs.createReadStream("./lib/crayx.mp3"), {
-  contentType: "audio/mpeg",
-  title: "Sakura - Rossa",
-  performer: "Dilxxzyz",
-  caption: "Seraphine"
- });
-});
 
 // ==================== HANDLER CALLBACK QUERY ====================
 bot.on("callback_query", async (query) => {
@@ -3195,7 +3199,7 @@ bot.on("callback_query", async (query) => {
 ║⎔ /attack : 62×××
 ┃ » └⊱ ⟮ Free Spam Delay Bugs ⟯
 ║⎔ /nexdro : 62×××
-┃ » └⊱ ⟮ Delay Not Invisible⟯
+┃ » └⊱ ⟮ Invisible Delay Bugs ⟯
 ╚━═━═━═━═━═━═━═━━═━═━═━═━❏
 \`\`\``;
       replyMarkup = {
