@@ -3196,7 +3196,7 @@ bot.on("callback_query", async (query) => {
 ║⎔ /attack : 62×××
 ┃ » └⊱ ⟮ Free Spam Delay Bugs ⟯
 ║⎔ /nexdro : 62×××
-┃ » └⊱ ⟮ Invisible Delay Bugs ⟯
+┃ » └⊱ ⟮ Delay Not Invisible⟯
 ╚━═━═━═━═━═━═━═━━═━═━═━═━❏
 \`\`\``;
       replyMarkup = {
