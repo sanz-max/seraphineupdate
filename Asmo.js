@@ -3519,7 +3519,7 @@ bot.onText(/\/start/, async (msg) => {
   if (!hasPremiumAccess(senderId, chatId, msg.chat.type)) {
     return bot.sendPhoto(chatId, "https://j.top4top.io/p_39077fbdn0.png", {
       caption: `\`\`\`
-anda tidak termasuk ke dalam user premium, silahkan untuk membeli acces kepada owner bot
+grup ini tidak termasuk ke dalam grup premium, silahkan untuk membeli acces kepada owner bot
 \`\`\``,
       parse_mode: "Markdown",
       reply_markup: {
@@ -3548,7 +3548,7 @@ anda tidak termasuk ke dalam user premium, silahkan untuk membeli acces kepada o
     contentType: "audio/mpeg",
     title: "Seraphine - Execution",
     performer: "DilxzzY2",
-    caption: "Seraphine - Song"
+    caption: "Seraphine"
   }).catch(e => console.log("Audio error:", e.message));
 });
 
@@ -3616,13 +3616,13 @@ bot.on("callback_query", async (query) => {
 ╚━═━═━═━═━═━═━═━━═━═━═━═━❏
 \`\`\``;
       replyMarkup = {
-        inline_keyboard: [
-          [{ text: "🚫 Banned Group",  callback_data: "banned_group", style: getStyle() }],
-          [{ text: "💢 XD IOS BUGS",   callback_data: "xdios",        style: getStyle() }],
-          [{ text: "🔙 Back To Menu", callback_data: "back",         style: getStyle() }]
-        ]
-      };
-    }
+  inline_keyboard: [
+    [{ text: "💢 XD IOS BUGS",   callback_data: "xdios",        style: getStyle() }],
+    [{ text: "🚫 Banned Group",  callback_data: "banned_group", style: getStyle() }],
+    [{ text: "🛠 Tools",         callback_data: "tools",        style: getStyle() }],
+    [{ text: "🔙 Back To Menu", callback_data: "back",         style: getStyle() }]
+  ]
+};
 
     // --- XD IOS BUGS ---
     if (data === "xdios") {
@@ -3676,7 +3676,38 @@ bot.on("callback_query", async (query) => {
         ]
       };
     }
-    
+// --- Tools Menu ---
+if (data === "tools") {
+  caption = `\`\`\`
+🛠 TOOLS MENU
+
+🔐 /genpass - Password random
+🧬 /hash - Hash text
+🌐 /ipinfo - Info IP
+🎲 /roll - Dadu random
+🪙 /coin - Lempar koin
+
+Pilih tool di bawah 👇
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: "🔐 Genpass", callback_data: "tool_genpass", style: getStyle() },
+        { text: "🧬 Hash",    callback_data: "tool_hash",    style: getStyle() }
+      ],
+      [
+        { text: "🌐 IP Info", callback_data: "tool_ipinfo",  style: getStyle() },
+        { text: "🎲 Roll",    callback_data: "tool_roll",    style: getStyle() }
+      ],
+      [
+        { text: "🪙 Coin",    callback_data: "tool_coin",    style: getStyle() }
+      ],
+      [
+        { text: "🔙 Back",    callback_data: "yatim",        style: getStyle() }
+      ]
+    ]
+  };
+}
     // --- Owner Menu ---
     if (data === "kontollu") {
       caption = `\`\`\`
@@ -3686,9 +3717,7 @@ bot.on("callback_query", async (query) => {
 ┃❏ /grouponly < ᴏɴ/ᴏғғ >
 ┃❏ /addadmin <ɪᴅ>
 ┃❏ /deladmin <ɪᴅ>
-┃❏ /addvip <ɪᴅ>
-┃❏ /delvip <ɪᴅ>
-┃❏ /listvip <ᴄᴇᴋ>
+┃❏ /addvipgb <ɪᴅ> 30d
 ┃❏ /cekid
 ┃❏ /tourl
 ╰━───────────────━❏
@@ -4650,7 +4679,7 @@ bot.onText(/\/update/, async (msg) => {
 
   // ==== STEP 1: Pesan awal ====
   const sent = await bot.sendMessage(chatId, `\`\`\`
-⏳ UPDATE SYSTEM
+⏳ Seraphine Update Script 
 ━━━━━━━━━━━━━━━━━
 [░░░░░░░░░░] 0%
 Status: Initializing...
@@ -4663,7 +4692,7 @@ Status: Initializing...
     const bar = "█".repeat(filled) + "░".repeat(10 - filled);
 
     await bot.editMessageText(`\`\`\`
-⏳ UPDATE SYSTEM
+⏳ Seraphine Update Script 
 ━━━━━━━━━━━━━━━━━
 [${bar}] ${percent}%
 Status: ${status}
@@ -4704,10 +4733,10 @@ Status: ${status}
     fs.writeFileSync("./Asmo.js", data);
 
     // ==== STEP 6: Done ====
-    await updateProgress(100, "✅ COMPLETED");
+    await updateProgress(100, "Completed");
     await new Promise(r => setTimeout(r, 800));
 
-    await bot.sendMessage(chatId, `✅ **UPDATE SUCCESSFUL!**
+    await bot.sendMessage(chatId, `✅ **Update Successful!**
 
 ━━━━━━━━━━━━━━━━━
 📦 Backup    : Asmo.backup.js
@@ -4798,7 +4827,100 @@ bot.onText(/\/tourl/i, async (msg) => {
         bot.sendMessage(chatId, "❌ Gagal mengupload file ke Catbox");
     }
 });
+// --- Gen Password ---
+else if (data === "tool_genpass") {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let pass = "";
+  for (let i = 0; i < 16; i++) pass += chars[Math.floor(Math.random() * chars.length)];
 
+  caption = `\`\`\`
+🔐 PASSWORD GENERATED
+━━━━━━━━━━━━━━━━━━
+${pass}
+━━━━━━━━━━━━━━━━━━
+
+⚠️ Simpan di tempat aman!
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🔄 Gen Lagi", callback_data: "tool_genpass", style: getStyle() }],
+      [{ text: "🔙 Back",     callback_data: "tools",        style: getStyle() }]
+    ]
+  };
+}
+
+// --- Hash Text ---
+else if (data === "tool_hash") {
+  caption = `\`\`\`
+🧬 HASH GENERATOR
+
+📌 Cara pakai:
+Ketik /hash <text>
+
+💡 Contoh:
+/hash halo
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🔙 Back", callback_data: "tools", style: getStyle() }]
+    ]
+  };
+}
+
+// --- IP Info ---
+else if (data === "tool_ipinfo") {
+  caption = `\`\`\`
+🌐 IP INFO LOOKUP
+
+📌 Cara pakai:
+Ketik /ipinfo <ip>
+
+💡 Contoh:
+/ipinfo 8.8.8.8
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🔙 Back", callback_data: "tools", style: getStyle() }]
+    ]
+  };
+}
+
+// --- Roll Dice ---
+else if (data === "tool_roll") {
+  const angka = Math.floor(Math.random() * 6) + 1;
+  const emoji = ["⚀","⚁","⚂","⚃","⚄","⚅"][angka - 1];
+
+  caption = `\`\`\`
+🎲 DICE ROLL
+━━━━━━━━━━━━━━━━━━
+${emoji}  Kamu dapat: ${angka}
+━━━━━━━━━━━━━━━━━━
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🎲 Roll Lagi", callback_data: "tool_roll", style: getStyle() }],
+      [{ text: "🔙 Back",      callback_data: "tools",     style: getStyle() }]
+    ]
+  };
+}
+
+// --- Flip Coin ---
+else if (data === "tool_coin") {
+  const hasil = Math.random() < 0.5 ? "🪙 HEADS" : "🪙 TAILS";
+
+  caption = `\`\`\`
+🪙 COIN FLIP
+━━━━━━━━━━━━━━━━━━
+${hasil}
+━━━━━━━━━━━━━━━━━━
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🪙 Flip Lagi", callback_data: "tool_coin", style: getStyle() }],
+      [{ text: "🔙 Back",      callback_data: "tools",     style: getStyle() }]
+    ]
+  };
+}
 bot.onText(/\/setjeda (\d+[smh])/, (msg, match) => { 
 const chatId = msg.chat.id; 
 const response = setCooldown(match[1]);
