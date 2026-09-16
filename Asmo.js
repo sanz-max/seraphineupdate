@@ -3732,13 +3732,14 @@ Yōkoso Seraphine no sukuri puto e. Kono sukuri puto o tadashiku tsukai, sapōto
 ( ! ) 𝘴𝘦𝘭𝘦𝘤𝘵 𝘵𝘩𝘦 𝘣𝘶𝘵𝘵𝘰𝘯 𝘮𝘦𝘯𝘶 𝘣𝘦𝘭𝘰𝘸
 \`\`\``;
       replyMarkup = {
-  inline_keyboard: [
-    [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",         style: getStyle() }],
-    [{ text: "[🌸] 𝐔͢𝐩͡𝐝͜𝐚͢𝐭͡𝐞 𝐒͜𝐜͢𝐫͡𝐢͜𝐩𝐭",      callback_data: "toolss", style: getStyle() }],
-    [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu",      style: getStyle() }],
-    [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",            style: getStyle() }]
-  ]
-};
+        inline_keyboard: [
+          [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",         style: getStyle() }],
+          [{ text: "[🌸] 𝐔͢𝐩͡𝐝͜𝐚͢𝐭͡𝐞 𝐒͜𝐜͢𝐫͡𝐢͜𝐩𝐭",      callback_data: "toolss",        style: getStyle() }],
+          [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu",      style: getStyle() }],
+          [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",            style: getStyle() }]
+        ]
+      };
+    }   // ✅ INI YANG KURANG
 
     // --- Kirim hasil edit ---
     if (caption) {
