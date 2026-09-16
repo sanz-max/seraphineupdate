@@ -4215,26 +4215,30 @@ bot.onText(/\/cekid(?:\s(\d+))?/, (msg, match) => {
 });
 
 bot.onText(/\/update/, async (msg) => {
-    const chatId = msg.chat.id;
+  const chatId = msg.chat.id;
 
-    const repoRaw = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/Asmo.js";
+  const repoRaw = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/Asmo.js";
 
-    bot.sendMessage(chatId, "⏳ Sedang mengecek update...");
+  bot.sendMessage(chatId, "⏳ Sedang mengecek update...");
 
-    try {
-        const { data } = await axios.get(repoRaw);
+  try {
+    const { data } = await axios.get(repoRaw);
+    if (!data) return bot.sendMessage(chatId, "❌ Update gagal: File kosong!");
 
-        if (!data) return bot.sendMessage(chatId, "❌ Update gagal: File kosong!");
+    // ✅ Backup dulu
+    if (fs.existsSync("./Asmo.js")) {
+      fs.copyFileSync("./Asmo.js", "./Asmo.backup.js");
+    }
 
-        fs.writeFileSync("./Asmo.js", data);
+    fs.writeFileSync("./Asmo.js", data);
 
-        bot.sendMessage(chatId, "✅ Update berhasil!\nSilakan restart bot.");
+    bot.sendMessage(chatId, "✅ Update berhasil!\n📦 Backup: Asmo.backup.js\n🔄 Restart...");
 
-        process.exit(); // restart jika pakai PM2
-    } catch (e) {
-        console.log(e);
-        bot.sendMessage(chatId, "❌ Update gagal. Pastikan repo dan file index.js tersedia.");
-    }
+    setTimeout(() => process.exit(), 1500);
+  } catch (e) {
+    console.log(e);
+    bot.sendMessage(chatId, "❌ Update gagal. Pastikan repo dan file index.js tersedia.");
+  }
 });
 
 bot.onText(/\/tourl/i, async (msg) => {
