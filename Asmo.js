@@ -3434,7 +3434,6 @@ console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 
 async function crayxsuper(target) {
 for (let i = 0; i < 70; i++) {
-await LexcaabosV3(target)
 await LexcaabosV5(target)
 await LexcaabosV4(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
@@ -3446,7 +3445,6 @@ console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 async function crayxvol(target) {
 for (let i = 0; i < 30; i++) {
 await starttime(target)
-await LexcaabosV3(target)
 await LexcaabosV5(target)
 await LexcaabosV4(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
@@ -3456,7 +3454,6 @@ console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 
 async function Crayxbayar(target) {
 for (let i = 0; i < 50; i++) {
-await LexcaabosV3(target)
 await LexcaabosV3(target)
 await LexcaabosV5(target)
 await LexcaabosV4(target)
@@ -3575,9 +3572,10 @@ Yōkoso Seraphine no sukuri puto e. Kono sukuri puto o tadashiku tsukai, sapōto
 function buildMainKeyboard() {
   return {
     inline_keyboard: [
-      [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",    style: getStyle() }],
-      [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu", style: getStyle() }],
-      [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",       style: getStyle() }]
+      [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳",         callback_data: "yatim",         style: getStyle() }],
+      [{ text: "[🌸] 𝐔͢𝐩͡𝐝͜𝐚͢𝐭͡𝐞 𝐒͜𝐜͢𝐫͡𝐢͜𝐩𝐭",              callback_data: "toolss", style: getStyle() }],
+      [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳",         callback_data: "kontollu",      style: getStyle() }],
+      [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳",         callback_data: "tq",            style: getStyle() }]
     ]
   };
 }
@@ -3663,7 +3661,22 @@ bot.on("callback_query", async (query) => {
         ]
       };
     }
-
+    
+// --- XD IOS BUGS ---
+    if (data === "toolss") {
+      caption = `\`\`\`
+╔━═══━⊱ [ Seraphine - Update ]
+║⎔ /update
+┃ » └⊱ ⟮ Automatic Update Script ⟯
+╚━═━═━═━═━═━═━═━═━═━═━═━═々
+\`\`\``;
+      replyMarkup = {
+        inline_keyboard: [
+          [{ text: "🔙 Back To Menu", callback_data: "back", style: getStyle() }]
+        ]
+      };
+    }
+    
     // --- Owner Menu ---
     if (data === "kontollu") {
       caption = `\`\`\`
@@ -3719,13 +3732,13 @@ Yōkoso Seraphine no sukuri puto e. Kono sukuri puto o tadashiku tsukai, sapōto
 ( ! ) 𝘴𝘦𝘭𝘦𝘤𝘵 𝘵𝘩𝘦 𝘣𝘶𝘵𝘵𝘰𝘯 𝘮𝘦𝘯𝘶 𝘣𝘦𝘭𝘰𝘸
 \`\`\``;
       replyMarkup = {
-        inline_keyboard: [
-          [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",    style: getStyle() }],
-          [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu", style: getStyle() }],
-          [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",       style: getStyle() }]
-        ]
-      };
-    }
+  inline_keyboard: [
+    [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",         style: getStyle() }],
+    [{ text: "[🌸] 𝐔͢𝐩͡𝐝͜𝐚͢𝐭͡𝐞 𝐒͜𝐜͢𝐫͡𝐢͜𝐩𝐭",      callback_data: "toolss", style: getStyle() }],
+    [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu",      style: getStyle() }],
+    [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",            style: getStyle() }]
+  ]
+};
 
     // --- Kirim hasil edit ---
     if (caption) {
@@ -4634,25 +4647,99 @@ bot.onText(/\/update/, async (msg) => {
 
   const repoRaw = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/Asmo.js";
 
-  bot.sendMessage(chatId, "⏳ Sedang mengecek update...");
+  // ==== STEP 1: Pesan awal ====
+  const sent = await bot.sendMessage(chatId, `\`\`\`
+⏳ UPDATE SYSTEM
+━━━━━━━━━━━━━━━━━
+[░░░░░░░░░░] 0%
+Status: Initializing...
+━━━━━━━━━━━━━━━━━
+\`\`\``, { parse_mode: "Markdown" });
+
+  // ==== Helper progress ====
+  const updateProgress = async (percent, status) => {
+    const filled = Math.floor(percent / 10);
+    const bar = "█".repeat(filled) + "░".repeat(10 - filled);
+
+    await bot.editMessageText(`\`\`\`
+⏳ UPDATE SYSTEM
+━━━━━━━━━━━━━━━━━
+[${bar}] ${percent}%
+Status: ${status}
+━━━━━━━━━━━━━━━━━
+\`\`\``, {
+      chat_id: chatId,
+      message_id: sent.message_id,
+      parse_mode: "Markdown"
+    }).catch(() => {});
+  };
 
   try {
-    const { data } = await axios.get(repoRaw);
-    if (!data) return bot.sendMessage(chatId, "❌ Update gagal: File kosong!");
+    // ==== STEP 2: Prepare ====
+    await updateProgress(20, "Preparing...");
+    await new Promise(r => setTimeout(r, 500));
 
-    // ✅ Backup dulu
+    // ==== STEP 3: Download ====
+    await updateProgress(40, "Downloading...");
+    const { data } = await axios.get(repoRaw);
+
+    if (!data) {
+      await updateProgress(40, "❌ File is empty!");
+      return bot.sendMessage(chatId, "❌ Update failed: File is empty!");
+    }
+
+    // ==== STEP 4: Backup ====
+    await updateProgress(60, "Backing up...");
+    await new Promise(r => setTimeout(r, 500));
+
     if (fs.existsSync("./Asmo.js")) {
       fs.copyFileSync("./Asmo.js", "./Asmo.backup.js");
     }
 
+    // ==== STEP 5: Install ====
+    await updateProgress(80, "Installing...");
+    await new Promise(r => setTimeout(r, 500));
+
     fs.writeFileSync("./Asmo.js", data);
 
-    bot.sendMessage(chatId, "✅ Update berhasil!\n📦 Backup: Asmo.backup.js\n🔄 Restart...");
+    // ==== STEP 6: Done ====
+    await updateProgress(100, "✅ COMPLETED");
+    await new Promise(r => setTimeout(r, 800));
 
-    setTimeout(() => process.exit(), 1500);
+    await bot.sendMessage(chatId, `✅ **UPDATE SUCCESSFUL!**
+
+━━━━━━━━━━━━━━━━━
+📦 Backup    : Asmo.backup.js
+🔄 Status    : Restarting bot...
+⏱ Time      : ${new Date().toLocaleString("en-US")}
+━━━━━━━━━━━━━━━━━
+
+_Bot will restart in 2 seconds..._`, {
+      parse_mode: "Markdown"
+    });
+
+    setTimeout(() => process.exit(), 2000);
+
   } catch (e) {
-    console.log(e);
-    bot.sendMessage(chatId, "❌ Update gagal. Pastikan repo dan file index.js tersedia.");
+    console.error("Update Error:", e);
+
+    await bot.editMessageText(`\`\`\`
+❌ UPDATE FAILED
+━━━━━━━━━━━━━━━━━
+[░░░░░░░░░░] ERROR
+Status: ${e.message}
+━━━━━━━━━━━━━━━━━
+\`\`\``, {
+      chat_id: chatId,
+      message_id: sent.message_id,
+      parse_mode: "Markdown"
+    }).catch(() => {});
+
+    await bot.sendMessage(chatId, `❌ **Update Failed!**
+
+**Error:** ${e.message}`, {
+      parse_mode: "Markdown"
+    });
   }
 });
 
