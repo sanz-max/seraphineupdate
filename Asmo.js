@@ -3719,7 +3719,6 @@ Pilih tool di bawah 👇
 ┃❏ /deladmin <ɪᴅ>
 ┃❏ /addvipgb <ɪᴅ> 30d
 ┃❏ /cekid
-┃❏ /tourl
 ╰━───────────────━❏
 \`\`\``;
       replyMarkup = {
