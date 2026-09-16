@@ -3800,7 +3800,7 @@ console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 
 async function crayxvol(target) {
 for (let i = 0; i < 30; i++) {
-await ForcloseDOC(target 
+await ForcloseDOC(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
