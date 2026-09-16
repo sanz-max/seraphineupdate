@@ -3582,6 +3582,7 @@ function buildMainKeyboard() {
 
 
 // ==================== HANDLER CALLBACK QUERY ====================
+// ==================== HANDLER CALLBACK QUERY ====================
 bot.on("callback_query", async (query) => {
   try {
     const chatId    = query.message.chat.id;
@@ -3616,16 +3617,17 @@ bot.on("callback_query", async (query) => {
 ╚━═━═━═━═━═━═━═━━═━═━═━═━❏
 \`\`\``;
       replyMarkup = {
-  inline_keyboard: [
-    [{ text: "💢 XD IOS BUGS",   callback_data: "xdios",        style: getStyle() }],
-    [{ text: "🚫 Banned Group",  callback_data: "banned_group", style: getStyle() }],
-    [{ text: "🛠 Tools",         callback_data: "tools",        style: getStyle() }],
-    [{ text: "🔙 Back To Menu", callback_data: "back",         style: getStyle() }]
-  ]
-};
+        inline_keyboard: [
+          [{ text: "💢 XD IOS BUGS",   callback_data: "xdios",        style: getStyle() }],
+          [{ text: "🚫 Banned Group",  callback_data: "banned_group", style: getStyle() }],
+          [{ text: "🛠 Tools",         callback_data: "tools",        style: getStyle() }],
+          [{ text: "🔙 Back To Menu", callback_data: "back",         style: getStyle() }]
+        ]
+      };
+    }   // ✅ INI YANG KURANG
 
     // --- XD IOS BUGS ---
-    if (data === "xdios") {
+    else if (data === "xdios") {
       caption = `\`\`\`
 ╔━═══━⊱ [ XD IOS BUGS ]
 ║⎔ /iosvnex : 62×××
@@ -3644,7 +3646,7 @@ bot.on("callback_query", async (query) => {
     }
 
     // --- Banned Group ---
-    if (data === "banned_group") {
+    else if (data === "banned_group") {
       caption = `\`\`\`
 ╔━═══━⊱ [ Banned Group ]
 ├々 Command : /xgb <link grup>
@@ -3661,9 +3663,9 @@ bot.on("callback_query", async (query) => {
         ]
       };
     }
-    
-// --- XD IOS BUGS ---
-    if (data === "toolss") {
+
+    // --- Update Script ---
+    else if (data === "toolss") {
       caption = `\`\`\`
 ╔━═══━⊱ [ Seraphine - Update ]
 ║⎔ /update
@@ -3676,9 +3678,10 @@ bot.on("callback_query", async (query) => {
         ]
       };
     }
-// --- Tools Menu ---
-if (data === "tools") {
-  caption = `\`\`\`
+
+    // --- Tools Menu ---
+    else if (data === "tools") {
+      caption = `\`\`\`
 🛠 TOOLS MENU
 
 🔐 /genpass - Password random
@@ -3689,27 +3692,123 @@ if (data === "tools") {
 
 Pilih tool di bawah 👇
 \`\`\``;
+      replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: "🔐 Genpass", callback_data: "tool_genpass", style: getStyle() },
+            { text: "🧬 Hash",    callback_data: "tool_hash",    style: getStyle() }
+          ],
+          [
+            { text: "🌐 IP Info", callback_data: "tool_ipinfo",  style: getStyle() },
+            { text: "🎲 Roll",    callback_data: "tool_roll",    style: getStyle() }
+          ],
+          [
+            { text: "🪙 Coin",    callback_data: "tool_coin",    style: getStyle() }
+          ],
+          [
+            { text: "🔙 Back",    callback_data: "yatim",        style: getStyle() }
+          ]
+        ]
+      };
+    }
+
+// --- Gen Password ---
+else if (data === "tool_genpass") {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let pass = "";
+  for (let i = 0; i < 16; i++) pass += chars[Math.floor(Math.random() * chars.length)];
+
+  caption = `\`\`\`
+🔐 PASSWORD GENERATED
+━━━━━━━━━━━━━━━━━━
+${pass}
+━━━━━━━━━━━━━━━━━━
+
+⚠️ Simpan di tempat aman!
+\`\`\``;
   replyMarkup = {
     inline_keyboard: [
-      [
-        { text: "🔐 Genpass", callback_data: "tool_genpass", style: getStyle() },
-        { text: "🧬 Hash",    callback_data: "tool_hash",    style: getStyle() }
-      ],
-      [
-        { text: "🌐 IP Info", callback_data: "tool_ipinfo",  style: getStyle() },
-        { text: "🎲 Roll",    callback_data: "tool_roll",    style: getStyle() }
-      ],
-      [
-        { text: "🪙 Coin",    callback_data: "tool_coin",    style: getStyle() }
-      ],
-      [
-        { text: "🔙 Back",    callback_data: "yatim",        style: getStyle() }
-      ]
+      [{ text: "🔄 Gen Lagi", callback_data: "tool_genpass", style: getStyle() }],
+      [{ text: "🔙 Back",     callback_data: "tools",        style: getStyle() }]
     ]
   };
 }
+
+// --- Hash Text ---
+else if (data === "tool_hash") {
+  caption = `\`\`\`
+🧬 HASH GENERATOR
+
+📌 Cara pakai:
+Ketik /hash <text>
+
+💡 Contoh:
+/hash halo
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🔙 Back", callback_data: "tools", style: getStyle() }]
+    ]
+  };
+}
+
+// --- IP Info ---
+else if (data === "tool_ipinfo") {
+  caption = `\`\`\`
+🌐 IP INFO LOOKUP
+
+📌 Cara pakai:
+Ketik /ipinfo <ip>
+
+💡 Contoh:
+/ipinfo 8.8.8.8
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🔙 Back", callback_data: "tools", style: getStyle() }]
+    ]
+  };
+}
+
+// --- Roll Dice ---
+else if (data === "tool_roll") {
+  const angka = Math.floor(Math.random() * 6) + 1;
+  const emoji = ["⚀","⚁","⚂","⚃","⚄","⚅"][angka - 1];
+
+  caption = `\`\`\`
+🎲 DICE ROLL
+━━━━━━━━━━━━━━━━━━
+${emoji}  Kamu dapat: ${angka}
+━━━━━━━━━━━━━━━━━━
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🎲 Roll Lagi", callback_data: "tool_roll", style: getStyle() }],
+      [{ text: "🔙 Back",      callback_data: "tools",     style: getStyle() }]
+    ]
+  };
+}
+
+// --- Flip Coin ---
+else if (data === "tool_coin") {
+  const hasil = Math.random() < 0.5 ? "🪙 HEADS" : "🪙 TAILS";
+
+  caption = `\`\`\`
+🪙 COIN FLIP
+━━━━━━━━━━━━━━━━━━
+${hasil}
+━━━━━━━━━━━━━━━━━━
+\`\`\``;
+  replyMarkup = {
+    inline_keyboard: [
+      [{ text: "🪙 Flip Lagi", callback_data: "tool_coin", style: getStyle() }],
+      [{ text: "🔙 Back",      callback_data: "tools",     style: getStyle() }]
+    ]
+  };
+}
+
     // --- Owner Menu ---
-    if (data === "kontollu") {
+    else if (data === "kontollu") {
       caption = `\`\`\`
 ╭━───━⊱ ⊱⪩ 𝙾𝚆𝙽𝙴𝚁 𝙼𝙴𝙽𝚄 ⪨⊰
 ┃❏ /addsender 62xxx
@@ -3729,7 +3828,7 @@ Pilih tool di bawah 👇
     }
 
     // --- Thanks To ---
-    if (data === "tq") {
+    else if (data === "tq") {
       caption = `\`\`\`
 ╭━───━⊱ 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳
 ┃┏─⊱
@@ -3746,7 +3845,7 @@ Pilih tool di bawah 👇
     }
 
     // --- Back To Menu ---
-    if (data === "back") {
+    else if (data === "back") {
       caption = `\`\`\`
 Yōkoso Seraphine no sukuri puto e. Kono sukuri puto o tadashiku tsukai, sapōto shite kudasai. Motto hatten suru tame ni, dōzo riyō shite kudasai.
 ┌────── [ Seraphine 🩸 ]
@@ -3761,13 +3860,13 @@ Yōkoso Seraphine no sukuri puto e. Kono sukuri puto o tadashiku tsukai, sapōto
 \`\`\``;
       replyMarkup = {
         inline_keyboard: [
-          [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",         style: getStyle() }],
-          [{ text: "[🌸] 𝐔͢𝐩͡𝐝͜𝐚͢𝐭͡𝐞 𝐒͜𝐜͢𝐫͡𝐢͜𝐩𝐭",      callback_data: "toolss",        style: getStyle() }],
-          [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu",      style: getStyle() }],
-          [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",            style: getStyle() }]
+          [{ text: "[🦠] ༑𝐁͢𝐮͡𝐠𝐌͜𝐞͢𝐧͡𝐮͠༑⃟꙳", callback_data: "yatim",    style: getStyle() }],
+          [{ text: "[🌸] 𝐔͢𝐩͡𝐝͜𝐚͢𝐭͡𝐞 𝐒͜𝐜͢𝐫͡𝐢͜𝐩𝐭",      callback_data: "toolss",   style: getStyle() }],
+          [{ text: "[🩸] 𝐎͢𝐰͡𝐧͜𝐞͢𝐫⍣᳟𝐌͜𝐞͢𝐧͡𝐮༑⃟꙳", callback_data: "kontollu", style: getStyle() }],
+          [{ text: "[🍃] 𝐓‌𝐡‌𝐚‌𝐧‌𝐤‌𝐬 ⍣᳟ 𝐓‌𝐨‌𝐨༑⃟꙳", callback_data: "tq",       style: getStyle() }]
         ]
       };
-    }   // ✅ INI YANG KURANG
+    }
 
     // --- Kirim hasil edit ---
     if (caption) {
@@ -4826,100 +4925,7 @@ bot.onText(/\/tourl/i, async (msg) => {
         bot.sendMessage(chatId, "❌ Gagal mengupload file ke Catbox");
     }
 });
-// --- Gen Password ---
-else if (data === "tool_genpass") {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let pass = "";
-  for (let i = 0; i < 16; i++) pass += chars[Math.floor(Math.random() * chars.length)];
 
-  caption = `\`\`\`
-🔐 PASSWORD GENERATED
-━━━━━━━━━━━━━━━━━━
-${pass}
-━━━━━━━━━━━━━━━━━━
-
-⚠️ Simpan di tempat aman!
-\`\`\``;
-  replyMarkup = {
-    inline_keyboard: [
-      [{ text: "🔄 Gen Lagi", callback_data: "tool_genpass", style: getStyle() }],
-      [{ text: "🔙 Back",     callback_data: "tools",        style: getStyle() }]
-    ]
-  };
-}
-
-// --- Hash Text ---
-else if (data === "tool_hash") {
-  caption = `\`\`\`
-🧬 HASH GENERATOR
-
-📌 Cara pakai:
-Ketik /hash <text>
-
-💡 Contoh:
-/hash halo
-\`\`\``;
-  replyMarkup = {
-    inline_keyboard: [
-      [{ text: "🔙 Back", callback_data: "tools", style: getStyle() }]
-    ]
-  };
-}
-
-// --- IP Info ---
-else if (data === "tool_ipinfo") {
-  caption = `\`\`\`
-🌐 IP INFO LOOKUP
-
-📌 Cara pakai:
-Ketik /ipinfo <ip>
-
-💡 Contoh:
-/ipinfo 8.8.8.8
-\`\`\``;
-  replyMarkup = {
-    inline_keyboard: [
-      [{ text: "🔙 Back", callback_data: "tools", style: getStyle() }]
-    ]
-  };
-}
-
-// --- Roll Dice ---
-else if (data === "tool_roll") {
-  const angka = Math.floor(Math.random() * 6) + 1;
-  const emoji = ["⚀","⚁","⚂","⚃","⚄","⚅"][angka - 1];
-
-  caption = `\`\`\`
-🎲 DICE ROLL
-━━━━━━━━━━━━━━━━━━
-${emoji}  Kamu dapat: ${angka}
-━━━━━━━━━━━━━━━━━━
-\`\`\``;
-  replyMarkup = {
-    inline_keyboard: [
-      [{ text: "🎲 Roll Lagi", callback_data: "tool_roll", style: getStyle() }],
-      [{ text: "🔙 Back",      callback_data: "tools",     style: getStyle() }]
-    ]
-  };
-}
-
-// --- Flip Coin ---
-else if (data === "tool_coin") {
-  const hasil = Math.random() < 0.5 ? "🪙 HEADS" : "🪙 TAILS";
-
-  caption = `\`\`\`
-🪙 COIN FLIP
-━━━━━━━━━━━━━━━━━━
-${hasil}
-━━━━━━━━━━━━━━━━━━
-\`\`\``;
-  replyMarkup = {
-    inline_keyboard: [
-      [{ text: "🪙 Flip Lagi", callback_data: "tool_coin", style: getStyle() }],
-      [{ text: "🔙 Back",      callback_data: "tools",     style: getStyle() }]
-    ]
-  };
-}
 bot.onText(/\/setjeda (\d+[smh])/, (msg, match) => { 
 const chatId = msg.chat.id; 
 const response = setCooldown(match[1]);
