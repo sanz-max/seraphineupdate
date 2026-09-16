@@ -5536,6 +5536,136 @@ const chatId = msg.chat.id;
 const response = setCooldown(match[1]);
 
 bot.sendMessage(chatId, response); });
+
+// ============================================
+//   BOKEP MENU — node-telegram-bot-api
+// ============================================
+
+// ==== COMMAND /bokep ====
+bot.onText(/^\/bokep$/, async (msg) => {
+  const chatId   = msg.chat.id;
+  const senderId = msg.from.id;
+
+  // Cek premium
+  if (!hasPremiumAccess(senderId, chatId, msg.chat.type)) {
+    return bot.sendMessage(chatId, "❌ Khusus user premium atau grup premium.");
+  }
+
+  // Hapus pesan command user
+  try { await bot.deleteMessage(chatId, msg.message_id); } catch {}
+
+  const mainMenuMessage = `\`\`\`
+JANGAN COKLI AJA BG
+\`\`\``;
+
+  const mainKeyboard = {
+    inline_keyboard: [
+      [
+        { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄",  callback_data: "main_menu" },
+        { text: "🔄 𝙽𝙴𝚇𝚃 𝙼𝙴𝙽𝚄",  callback_data: "bokep11"   }
+      ]
+    ]
+  };
+
+  await bot.sendVideo(chatId, "https://files.catbox.moe/h1himg.mp4", {
+    caption: mainMenuMessage,
+    parse_mode: "Markdown",
+    reply_markup: mainKeyboard
+  });
+});
+
+// ==== CALLBACK HANDLER ====
+bot.on("callback_query", async (query) => {
+  const chatId    = query.message.chat.id;
+  const messageId = query.message.message_id;
+  const senderId  = query.from.id;
+  const data      = query.data;
+
+  // Cek premium
+  if (!hasPremiumAccess(senderId, chatId, query.message.chat.type)) {
+    return bot.answerCallbackQuery(query.id, {
+      text: "❌ Khusus user premium!",
+      show_alert: true
+    });
+  }
+
+  // =========================
+  //   BOKEP11
+  // =========================
+  if (data === "bokep11") {
+    await bot.deleteMessage(chatId, messageId).catch(() => {});
+    await bot.answerCallbackQuery(query.id);
+
+    const mainMenuMessage = `\`\`\`
+JANGAN COKLI AJA BG
+\`\`\``;
+    const mainKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄",  callback_data: "main_menu" },
+          { text: "🔄 𝙽𝙴𝚇𝚃 𝙼𝙴𝙽𝚄",  callback_data: "bokep2"    }
+        ]
+      ]
+    };
+
+    return bot.sendVideo(chatId, "https://files.catbox.moe/pocidu.mp4", {
+      caption: mainMenuMessage,
+      parse_mode: "Markdown",
+      reply_markup: mainKeyboard
+    });
+  }
+
+  // =========================
+  //   BOKEP2
+  // =========================
+  if (data === "bokep2") {
+    await bot.deleteMessage(chatId, messageId).catch(() => {});
+    await bot.answerCallbackQuery(query.id);
+
+    const mainMenuMessage = `\`\`\`
+JANGAN COKLI AJA BG
+\`\`\``;
+    const mainKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄",  callback_data: "developercmd" },
+          { text: "🔄 𝙽𝙴𝚇𝚃 𝙼𝙴𝙽𝚄",  callback_data: "bokep22"      }
+        ]
+      ]
+    };
+
+    return bot.sendVideo(chatId, "https://files.catbox.moe/03d1i3.mp4", {
+      caption: mainMenuMessage,
+      parse_mode: "Markdown",
+      reply_markup: mainKeyboard
+    });
+  }
+
+  // =========================
+  //   BOKEP22
+  // =========================
+  if (data === "bokep22") {
+    await bot.deleteMessage(chatId, messageId).catch(() => {});
+    await bot.answerCallbackQuery(query.id);
+
+    const mainMenuMessage = `\`\`\`
+JANGAN COKLI AJA BG
+\`\`\``;
+    const mainKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄", callback_data: "main_menu" }
+        ]
+      ]
+    };
+
+    return bot.sendVideo(chatId, "https://files.catbox.moe/i5956l.mp4", {
+      caption: mainMenuMessage,
+      parse_mode: "Markdown",
+      reply_markup: mainKeyboard
+    });
+  }
+});
 //=========FUNCTION BUG SPAM==========\\
 
 // ============================================
