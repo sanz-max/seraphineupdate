@@ -3134,9 +3134,9 @@ anda tidak termasuk ke dalam user premium, silahkan untuk membeli acces kepada o
   // --- 🎵 Lagu ---
   await bot.sendAudio(chatId, fs.createReadStream("./lib/crayx.mp3"), {
     contentType: "audio/mpeg",
-    title: "Sakura - Rossa",
-    performer: "Dilxxzyz",
-    caption: "Seraphine"
+    title: "Seraphine",
+    performer: "DilxzzY2",
+    caption: "Seraphine - Execution"
   }).catch(e => console.log("Audio error:", e.message));
 });
 
