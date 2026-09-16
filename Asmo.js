@@ -3548,7 +3548,7 @@ anda tidak termasuk ke dalam user premium, silahkan untuk membeli acces kepada o
     contentType: "audio/mpeg",
     title: "Seraphine - Execution",
     performer: "DilxzzY2",
-    caption: "Seraphine"
+    caption: "Seraphine - Song"
   }).catch(e => console.log("Audio error:", e.message));
 });
 
