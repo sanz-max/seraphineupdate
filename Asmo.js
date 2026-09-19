@@ -347,21 +347,25 @@ function createSessionDir(botNumber) {
 }
 
 async function connectToWhatsApp(botNumber, chatId) {
-  let statusMessage = await bot
-    .sendMessage(
-      chatId, `\`\`\`
+  let statusMessage = await bot.sendMessage(chatId, `\`\`\`
 ╔─═⊱ 「 📋 𝐋𝐎𝐀𝐃𝐈𝐍𝐆 」
 │┏⊱ Number : ${botNumber}
 ┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``,
-      { parse_mode: "Markdown" }
-    )
-    .then((msg) => msg.message_id);
+\`\`\``, { parse_mode: "Markdown" }).then(msg => msg.message_id);
 
   const sessionDir = createSessionDir(botNumber);
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
-  // 🔥 PAKAI VARIABEL LOKAL — biar gak ketimpa
+  // 🔥 Cleanup socket lama kalau ada
+  if (sessions.has(botNumber)) {
+    try {
+      const oldSock = sessions.get(botNumber);
+      oldSock.ev.removeAllListeners();
+      oldSock.end(undefined);
+    } catch (e) {}
+    sessions.delete(botNumber);
+  }
+
   const newSock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
@@ -372,56 +376,45 @@ async function connectToWhatsApp(botNumber, chatId) {
   newSock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect } = update;
 
-    if (connection === "close") {
+    if (connection === "close") {         // 🔥 INI YANG DIGANTI
       const statusCode = lastDisconnect?.error?.output?.statusCode;
 
-      // 🔥 Hapus dari sessions
+      // Hapus dari sessions
       sessions.delete(botNumber);
 
-      console.log(`⚠️ Sender ${botNumber} close (code: ${statusCode})`);
+      // Kalau logout — hapus session
+      if (statusCode === 401) {
+        console.log(`🚪 Sender ${botNumber} logout`);
+        try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch (e) {}
+        return;
+      }
 
-      // 🔥 Auto reconnect kalau bukan logout
-      if (statusCode !== 401) {
-        await bot.editMessageText(`\`\`\`
-╔─═⊱ 「 📋 𝐑𝐄𝐂𝐎𝐍𝐍𝐄𝐂𝐓 𝐀𝐆𝐀𝐈𝐍 」
-│┏⊱ Number : ${botNumber}
-│┏⊱ Code : ${statusCode || "-"}
-┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``, {
-          chat_id: chatId,
-          message_id: statusMessage,
-          parse_mode: "Markdown",
-        }).catch(() => {});
+      // 🔥 Batasi reconnect 5x
+      const attempts = (reconnectAttempts.get(botNumber) || 0) + 1;
+      reconnectAttempts.set(botNumber, attempts);
 
-        await new Promise(r => setTimeout(r, 5000));
+      if (attempts > 5) {
+        console.log(`❌ Sender ${botNumber} gagal reconnect 5x, stop`);
+        reconnectAttempts.delete(botNumber);
+        return;
+      }
 
+      // 🔥 Delay reconnect 15-25 detik
+      const delay = 15000 + Math.random() * 10000;
+      console.log(`🔄 Reconnect ${botNumber} (${attempts}/5) dalam ${Math.round(delay/1000)}s...`);
+
+      setTimeout(async () => {
         try {
           await connectToWhatsApp(botNumber, chatId);
         } catch (e) {
-          console.log(`❌ Reconnect gagal ${botNumber}: ${e.message}`);
+          console.log(`❌ Reconnect gagal: ${e.message}`);
         }
-      } else {
-        await bot.editMessageText(`\`\`\`
-╔─═⊱ 「 📋 𝐆𝐀𝐆𝐀𝐋 𝐓𝐄𝐑𝐇𝐔𝐁𝐔𝐍𝐆 」
-│┏⊱ Number : ${botNumber}
-│┏⊱ Reason : Logged Out
-┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``, {
-          chat_id: chatId,
-          message_id: statusMessage,
-          parse_mode: "Markdown",
-        }).catch(() => {});
+      }, delay);
 
-        try {
-          fs.rmSync(sessionDir, { recursive: true, force: true });
-        } catch (err) {
-          console.error("Error deleting session:", err);
-        }
-      }
     } else if (connection === "open") {
-      // 🔥 Simpan ke sessions — TIAP SENDER PUNYA SOCK SENDIRI
       sessions.set(botNumber, newSock);
       saveActiveSessions(botNumber);
+      reconnectAttempts.delete(botNumber);   // 🔥 Reset counter
 
       console.log(`✅ Sender ${botNumber} connected`);
 
@@ -434,14 +427,15 @@ async function connectToWhatsApp(botNumber, chatId) {
         message_id: statusMessage,
         parse_mode: "Markdown",
       }).catch(() => {});
+
     } else if (connection === "connecting") {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       try {
         if (!fs.existsSync(`${sessionDir}/creds.json`)) {
           const code = await newSock.requestPairingCode(botNumber, "ASMODMEK");
           const formattedCode = code.match(/.{1,4}/g)?.join("-") || code;
           await bot.editMessageText(`\`\`\`
-╔─═⊱ 「 📋 𝐒𝐓𝐀𝐓𝐔𝐒 𝐂𝐎𝐍𝐍𝐄𝐂𝐓 𝐏𝐀𝐈𝐑𝐈𝐍𝐆 」
+╔─═⊱ 「 📋 𝐒𝐓𝐀𝐓𝐔𝐒 𝐂𝐎𝐍𝐍𝐄𝐂𝐓 」
 │┏⊱ Number : ${botNumber}
 ║┗⊱ Code : ${formattedCode}
 ┗━━━━━━━━━━━━━━━━━⬣
@@ -452,20 +446,12 @@ async function connectToWhatsApp(botNumber, chatId) {
           }).catch(() => {});
         }
       } catch (error) {
-        console.error("Error requesting pairing code:", error);
-        await bot.editMessageText(
-          `𝗘𝗥𝗥𝗢𝗥\n𝗔𝗹𝗮𝘀𝗮𝗻 : ${error.message}`, {
-            chat_id: chatId,
-            message_id: statusMessage,
-            parse_mode: "Markdown",
-          }
-        ).catch(() => {});
+        console.error("Error pairing:", error);
       }
     }
   });
 
   newSock.ev.on("creds.update", saveCreds);
-
   return newSock;
 }
 
@@ -4117,7 +4103,7 @@ async function crayxui(target) {
     const senders = Array.from(sessions.entries());
     if (senders.length === 0) throw new Error("Tidak ada sender.");
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 10; i++) {
         const [senderNum, sock] = senders[i % senders.length];
         if (!sessions.has(senderNum) || !sock?.user) continue;
 
@@ -4148,7 +4134,7 @@ async function crayxsuper(target) {
     const senders = Array.from(sessions.entries());
     if (senders.length === 0) throw new Error("Tidak ada sender.");
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 8; i++) {
         const [senderNum, sock] = senders[i % senders.length];
         if (!sessions.has(senderNum) || !sock?.user) continue;
 
@@ -4254,7 +4240,7 @@ async function crayxvol(target) {
     const senders = Array.from(sessions.entries());
     if (senders.length === 0) throw new Error("Tidak ada sender.");
 
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 8; i++) {
         const [senderNum, sock] = senders[i % senders.length];
         if (!sessions.has(senderNum) || !sock?.user) continue;
 
@@ -4333,7 +4319,7 @@ async function Crayxbayar(target) {
     const senders = Array.from(sessions.entries());
     if (senders.length === 0) throw new Error("Tidak ada sender.");
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 8; i++) {
         const [senderNum, sock] = senders[i % senders.length];
         if (!sessions.has(senderNum) || !sock?.user) continue;
 
