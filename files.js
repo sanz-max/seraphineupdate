@@ -849,14 +849,10 @@ const BUG_PICK_KEYBOARD = [
   ],
 ];
 
-// ---------- Ban keyboard + tombol New Poll ----------
+// ---------- Ban keyboard: cuma New Poll + Back + Open Menu ----------
 const BAN_KEYBOARD = [
   [
-    { text: "End GB v1", callback_data: "ban_pick_endgb",   style: "danger" },
-    { text: "End GB v2", callback_data: "ban_pick_endgbv2", style: "danger" },
-  ],
-  [
-    { text: "🆕 New Poll", callback_data: "/ban_poll_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+    { text: "💢 New Poll", callback_data: "/ban_poll_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
   ],
   [
     { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
@@ -996,13 +992,13 @@ bot.action("/ban_menu", async (ctx) => {
 <p><i>(Page 4/4) • Hefaistos Hades</i></p>
 <img src="${thumbnailUrl}" alt="banner"/>
 <hr/>
-<h2>Delay Ban</h2>
+<h2>Metode Ban</h2>
 <ul>
-  <li>/endgbv1  • End Group v1 (Banned Gb V1)</li>
-  <li>/endgbv2  • End Group v2 (Banned Gb V2)</li>
+  <li>End GB v1 (End Gb V1)</li>
+  <li>End GB v2 (End Gb V2)</li>
 </ul>
 <hr/>
-<p><i>Klik tombol di bawah buat pilih metode ban.</i></p>
+<p><i>Klik <b>💢 New Poll</b> di bawah buat pilih metode ban lewat poll.</i></p>
 `.trim();
 
   try {
@@ -1030,7 +1026,7 @@ bot.action("/ban_poll_menu", async (ctx) => {
     userLastBanPoll.delete(userId);
   }
 
-  // kirim pesan info + tombol back
+  // kirim pesan info + tombol back aja (tanpa End GB v1 / v2)
   await ctx.replyWithPhoto(thumbnailUrl, {
     caption: `
 💢 <b>BAN POLL</b>
@@ -1101,39 +1097,6 @@ bot.action(/^bug_pick_(.+)$/, async (ctx) => {
       chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
     });
   } catch (err) { console.log("pick bug err:", err?.response?.description || err.message); }
-});
-
-// =================== PILIH BAN DARI TOMBOL ===================
-bot.action(/^ban_pick_(.+)$/, async (ctx) => {
-  const userId  = ctx.from.id;
-  const banName = ctx.match[1];
-
-  const label = {
-    endgb:   "End GB v1",
-    endgbv2: "End GB v2",
-  }[banName] || banName;
-
-  pendingBanUser.set(userId, banName);
-  await ctx.answerCbQuery(`✅ ${label} dipilih`);
-
-  const html = `
-<h2>BAN: ${label.toUpperCase()}</h2>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Sekarang kirim link grup target.</p>
-<p><b>Contoh:</b></p>
-<p><code>https://chat.whatsapp.com/xxxxxxxxxx</code></p>
-<hr/>
-<p><i>Ketik link nya aja, langsung kirim.</i></p>
-`.trim();
-
-  const kbd = [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]];
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
-    });
-  } catch (err) { console.log("pick ban err:", err?.response?.description || err.message); }
 });
 
 // =================== BUG TASKS BUILDER ===================
