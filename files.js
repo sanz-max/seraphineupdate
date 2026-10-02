@@ -1033,7 +1033,7 @@ bot.action("/ban_poll_menu", async (ctx) => {
   // kirim pesan info + tombol back
   await ctx.replyWithPhoto(thumbnailUrl, {
     caption: `
-🆕 <b>BAN POLL</b>
+💢 <b>BAN POLL</b>
 <i>Pilih metode ban lewat vote di bawah ⬇️</i>
 
 Setelah milih, langsung kirim link grupnya.
@@ -1049,8 +1049,8 @@ Setelah milih, langsung kirim link grupnya.
   // kirim poll
   const pollMsg = await ctx.telegram.sendPoll(
     chatId,
-    "🔥 Mau pakai metode ban yang mana?",
-    ["End GB v1 (Join + Spam Action)", "End GB v2 (Kick All + Lock)"],
+    "🌸 Mau pakai metode ban yang mana?",
+    ["End GB v1 (End Gb V1)", "End GB v2 (End Gb V2)"],
     {
       is_anonymous: false,
       allows_multiple_answers: false,
