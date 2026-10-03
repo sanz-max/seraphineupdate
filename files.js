@@ -692,12 +692,8 @@ const BUG_KEYBOARD = [
   ],
 ];
 
-// ---------- Ban keyboard + tombol New Poll ----------
+// ---------- Ban keyboard: cuma New Poll + Back + Open Menu ----------
 const BAN_KEYBOARD = [
-  [
-    { text: "End GB v1", callback_data: "ban_pick_endgb",   style: "danger" },
-    { text: "End GB v2", callback_data: "ban_pick_endgbv2", style: "danger" },
-  ],
   [
     { text: "💢 New Poll", callback_data: "/ban_poll_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
   ],
@@ -708,10 +704,10 @@ const BAN_KEYBOARD = [
 ];
 
 // =================== POLL STORE ===================
-const activeBanPolls   = new Map(); // pollId -> { chatId, msgId, userId }
-const userLastBanPoll  = new Map(); // userId -> pollId
-const activeBugPolls   = new Map(); // pollId -> { chatId, msgId, userId }
-const userLastBugPoll  = new Map(); // userId -> pollId
+const activeBanPolls   = new Map();
+const userLastBanPoll  = new Map();
+const activeBugPolls   = new Map();
+const userLastBugPoll  = new Map();
 
 // =================== PENDING STATE ===================
 const pendingBugUser = new Map();
@@ -812,13 +808,13 @@ bot.action("/ban_menu", async (ctx) => {
 <p><i>(Page 4/4) • Hefaistos Hades</i></p>
 <img src="${thumbnailUrl}" alt="banner"/>
 <hr/>
-<h2>Delay Ban</h2>
+<h2>Metode Ban</h2>
 <ul>
-  <li>/endgbv1  • End Group v1 (Banned Gb V1)</li>
-  <li>/endgbv2  • End Group v2 (Banned Gb V2)</li>
+  <li><code>/endgbv1 LINK</code> — End GB v1</li>
+  <li><code>/endgbv2 LINK</code> — End GB v2</li>
 </ul>
 <hr/>
-<p><i>Klik tombol di bawah buat pilih metode ban.</i></p>
+<p><i>Klik <b>💢 New Poll</b> di bawah buat pilih lewat poll.</i></p>
 `.trim();
 
   try {
@@ -832,7 +828,6 @@ bot.action("/ban_menu", async (ctx) => {
 bot.action("/bug_poll_menu", async (ctx) => {
   const userId = ctx.from.id;
   const chatId = ctx.chat.id;
-
   await ctx.answerCbQuery("🐛 Buka poll bug");
 
   const oldId = userLastBugPoll.get(userId);
@@ -846,38 +841,20 @@ bot.action("/bug_poll_menu", async (ctx) => {
   }
 
   await ctx.replyWithPhoto(thumbnailUrl, {
-    caption: `
-🐛 <b>BUG POLL</b>
-<i>Pilih jenis bug lewat vote di bawah ⬇️</i>
-
-Setelah milih, langsung kirim nomornya.
-`.trim(),
+    caption: `🐛 <b>BUG POLL</b>\n<i>Pilih jenis bug lewat vote di bawah ⬇️</i>\n\nSetelah milih, langsung kirim nomornya.`,
     parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [[
-        { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
-      ]],
-    },
+    reply_markup: { inline_keyboard: [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]] },
   }).catch(() => {});
 
   const pollMsg = await ctx.telegram.sendPoll(
     chatId,
     "🐛 Mau pakai bug yang mana?",
     ["Forceclose", "Delayhard", "Ghost", "Forcezz", "Xdios"],
-    {
-      is_anonymous: false,
-      allows_multiple_answers: false,
-      open_period: 300,
-    }
+    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
   ).catch((e) => { console.log("bug poll err:", e.message); return null; });
 
   if (!pollMsg || !pollMsg.poll) return;
-
-  activeBugPolls.set(pollMsg.poll.id, {
-    chatId,
-    msgId: pollMsg.message_id,
-    userId,
-  });
+  activeBugPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
   userLastBugPoll.set(userId, pollMsg.poll.id);
 });
 
@@ -885,7 +862,6 @@ Setelah milih, langsung kirim nomornya.
 bot.action("/ban_poll_menu", async (ctx) => {
   const userId = ctx.from.id;
   const chatId = ctx.chat.id;
-
   await ctx.answerCbQuery("💢 Buka poll ban");
 
   const oldId = userLastBanPoll.get(userId);
@@ -899,72 +875,21 @@ bot.action("/ban_poll_menu", async (ctx) => {
   }
 
   await ctx.replyWithPhoto(thumbnailUrl, {
-    caption: `
-💢 <b>BAN POLL</b>
-<i>Pilih metode ban lewat vote di bawah ⬇️</i>
-
-Setelah milih, langsung kirim link grupnya.
-`.trim(),
+    caption: `💢 <b>BAN POLL</b>\n<i>Pilih metode ban lewat vote di bawah ⬇️</i>\n\nSetelah milih, langsung kirim link grupnya.`,
     parse_mode: "HTML",
-    reply_markup: {
-      inline_keyboard: [[
-        { text: "𝐁𝐚𝐜𝐤", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
-      ]],
-    },
+    reply_markup: { inline_keyboard: [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]] },
   }).catch(() => {});
 
   const pollMsg = await ctx.telegram.sendPoll(
     chatId,
     "🌸 Mau pakai metode ban yang mana?",
     ["End GB v1 (End Gb V1)", "End GB v2 (End Gb V2)"],
-    {
-      is_anonymous: false,
-      allows_multiple_answers: false,
-      open_period: 300,
-    }
+    { is_anonymous: false, allows_multiple_answers: false, open_period: 300 }
   ).catch((e) => { console.log("ban poll err:", e.message); return null; });
 
   if (!pollMsg || !pollMsg.poll) return;
-
-  activeBanPolls.set(pollMsg.poll.id, {
-    chatId,
-    msgId: pollMsg.message_id,
-    userId,
-  });
+  activeBanPolls.set(pollMsg.poll.id, { chatId, msgId: pollMsg.message_id, userId });
   userLastBanPoll.set(userId, pollMsg.poll.id);
-});
-
-// =================== PILIH BAN DARI TOMBOL ===================
-bot.action(/^ban_pick_(.+)$/, async (ctx) => {
-  const userId  = ctx.from.id;
-  const banName = ctx.match[1];
-
-  const label = {
-    endgb:   "End GB v1",
-    endgbv2: "End GB v2",
-  }[banName] || banName;
-
-  pendingBanUser.set(userId, banName);
-  await ctx.answerCbQuery(`✅ ${label} dipilih`);
-
-  const html = `
-<h2>BAN: ${label.toUpperCase()}</h2>
-<img src="${thumbnailUrl}" alt="banner"/>
-<hr/>
-<p>Sekarang kirim link grup target.</p>
-<p><b>Contoh:</b></p>
-<p><code>https://chat.whatsapp.com/xxxxxxxxxx</code></p>
-<hr/>
-<p><i>Ketik link nya aja, langsung kirim.</i></p>
-`.trim();
-
-  const kbd = [[{ text: "𝐁𝐚𝐜𝐤", callback_data: "/ban_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" }]];
-
-  try {
-    await ctx.telegram.callApi("editMessageText", {
-      chat_id: ctx.chat.id, message_id: ctx.callbackQuery.message.message_id, rich_message: { html }, reply_markup: { inline_keyboard: kbd },
-    });
-  } catch (err) { console.log("pick ban err:", err?.response?.description || err.message); }
 });
 
 // =================== BUG TASKS BUILDER ===================
@@ -1092,7 +1017,7 @@ bot.on("text", async (ctx, next) => {
 bot.on("poll_answer", async (ctx) => {
   const ans = ctx.pollAnswer;
 
-  // ---------- BUG POLL ----------
+  // BUG POLL
   const sBug = activeBugPolls.get(ans.poll_id);
   if (sBug) {
     const idx = ans.option_ids[0];
@@ -1114,7 +1039,7 @@ bot.on("poll_answer", async (ctx) => {
     return;
   }
 
-  // ---------- BAN POLL ----------
+  // BAN POLL
   const s = activeBanPolls.get(ans.poll_id);
   if (s) {
     const idx = ans.option_ids[0];
@@ -1769,7 +1694,9 @@ const BACKUP_FILE_PATH = "./files.backup.js";
 
 bot.command("update", async (ctx) => {
   if (ctx.from.id != ownerID) return ctx.reply("❌ ☇ Khusus owner.");
+
   const chatId = ctx.chat.id;
+
   const sent = await ctx.telegram.sendMessage(chatId, `\`\`\`
 ⏳ Seraphine Update Script
 ━━━━━━━━━━━━━━━━━
@@ -1791,16 +1718,34 @@ Status: ${status}
   };
 
   try {
-    await updateProgress(20, "Preparing..."); await sleep(500);
+    await updateProgress(20, "Preparing...");
+    await sleep(500);
+
     await updateProgress(40, "Downloading...");
     const { data } = await axios.get(UPDATE_URL);
     if (!data) { await updateProgress(40, "❌ File is empty!"); return ctx.reply("❌ Update failed: File is empty!"); }
-    await updateProgress(60, "Backing up..."); await sleep(500);
+
+    await updateProgress(60, "Backing up...");
+    await sleep(500);
     if (fs.existsSync(UPDATE_FILE_PATH)) fs.copyFileSync(UPDATE_FILE_PATH, BACKUP_FILE_PATH);
-    await updateProgress(80, "Installing..."); await sleep(500);
+
+    await updateProgress(80, "Installing...");
+    await sleep(500);
     fs.writeFileSync(UPDATE_FILE_PATH, data);
-    await updateProgress(100, "Completed"); await sleep(800);
-    await ctx.reply(`✅ **Update Successful!** Restarting...`, { parse_mode: "Markdown" });
+
+    await updateProgress(100, "Completed");
+    await sleep(800);
+
+    await ctx.reply(`✅ **Update Successful!**
+
+━━━━━━━━━━━━━━━━━
+📦 Backup    : files.backup.js
+🔄 Status    : Restarting bot...
+⏱ Time      : ${new Date().toLocaleString("en-US")}
+━━━━━━━━━━━━━━━━━
+
+_Bot will restart in 2 seconds..._`, { parse_mode: "Markdown" });
+
     setTimeout(() => process.exit(), 2000);
   } catch (e) {
     console.error("Update Error:", e);
