@@ -504,16 +504,93 @@ async function BanGroup(sock, targetJid) {
 }
 
 // =====================================================
-// ============ SPAM LOOP ANTI-ERROR ==================
+// ============ STATS STORAGE ==========================
+// =====================================================
+const STATS_FILE = path.join(__dirname, "database", "stats.json");
+if (!fs.existsSync(path.join(__dirname, "database"))) fs.mkdirSync(path.join(__dirname, "database"), { recursive: true });
+
+function loadStats() {
+  try {
+    if (!fs.existsSync(STATS_FILE)) fs.writeFileSync(STATS_FILE, JSON.stringify({
+      total_jobs: 0,
+      total_iterasi_ok: 0,
+      total_iterasi_fail: 0,
+      per_user: {},
+      per_target: {},
+      per_label: {},
+      per_day: {},
+      last_job: null,
+    }, null, 2));
+    return JSON.parse(fs.readFileSync(STATS_FILE, "utf8"));
+  } catch {
+    return { total_jobs: 0, total_iterasi_ok: 0, total_iterasi_fail: 0, per_user: {}, per_target: {}, per_label: {}, per_day: {}, last_job: null };
+  }
+}
+const saveStats = (d) => fs.writeFileSync(STATS_FILE, JSON.stringify(d, null, 2));
+
+function todayWIB() {
+  return moment().tz("Asia/Jakarta").format("YYYY-MM-DD");
+}
+
+function logStatsStart(userId, userName, label, target) {
+  const s = loadStats();
+  const uid = String(userId);
+  const rawTarget = String(target).split("@")[0];
+
+  s.total_jobs = (s.total_jobs || 0) + 1;
+  s.per_user[uid] = s.per_user[uid] || { name: userName, bug_count: 0, ban_count: 0, iter_ok: 0, iter_fail: 0 };
+  s.per_user[uid].name = userName;
+  s.per_user[uid].bug_count += 1;
+  s.per_target[rawTarget] = (s.per_target[rawTarget] || 0) + 1;
+  s.per_label[label] = (s.per_label[label] || 0) + 1;
+
+  const day = todayWIB();
+  s.per_day[day] = s.per_day[day] || { bug: 0, ban: 0 };
+  s.per_day[day].bug += 1;
+
+  s.last_job = { user: userName, label, target: rawTarget, at: moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm") };
+
+  saveStats(s);
+}
+
+function logStatsFinish(userId, iterOk, iterFail) {
+  const s = loadStats();
+  const uid = String(userId);
+  s.total_iterasi_ok = (s.total_iterasi_ok || 0) + iterOk;
+  s.total_iterasi_fail = (s.total_iterasi_fail || 0) + iterFail;
+  if (s.per_user[uid]) {
+    s.per_user[uid].iter_ok += iterOk;
+    s.per_user[uid].iter_fail += iterFail;
+  }
+  saveStats(s);
+}
+
+function logStatsBan(userId, userName) {
+  const s = loadStats();
+  const uid = String(userId);
+  s.per_user[uid] = s.per_user[uid] || { name: userName, bug_count: 0, ban_count: 0, iter_ok: 0, iter_fail: 0 };
+  s.per_user[uid].name = userName;
+  s.per_user[uid].ban_count += 1;
+  const day = todayWIB();
+  s.per_day[day] = s.per_day[day] || { bug: 0, ban: 0 };
+  s.per_day[day].ban += 1;
+  saveStats(s);
+}
+
+// =====================================================
+// ============ SPAM LOOP (UPDATED + LOG) ==============
 // =====================================================
 const activeSpam = new Map();
 let spamCounter = 0;
 
 async function spamForever(ctx, label, target, tasks) {
   const userId = ctx.from.id.toString();
+  const userName = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User";
   const jobId  = `${userId}_${++spamCounter}`;
 
   activeSpam.set(jobId, { userId, stop: false, stats: { ok: 0, fail: 0 } });
+
+  try { logStatsStart(userId, userName, label, target); } catch (e) { console.log("stats log err:", e.message); }
 
   const startAt = Date.now();
   let iterasi = 0;
@@ -533,6 +610,7 @@ async function spamForever(ctx, label, target, tasks) {
         `🛑 <b>${label}</b> (${jobId}) dihentikan\n\n✅ Sukses : ${state?.stats.ok || 0}\n❌ Gagal  : ${state?.stats.fail || 0}\n⏱ Durasi : ${durasi}s`,
         { parse_mode: "HTML" }
       ).catch(() => {});
+      try { logStatsFinish(userId, state?.stats.ok || 0, state?.stats.fail || 0); } catch {}
       activeSpam.delete(jobId);
       return;
     }
@@ -852,7 +930,7 @@ const BUG_PICK_KEYBOARD = [
 // ---------- Ban keyboard: cuma New Poll + Back + Open Menu ----------
 const BAN_KEYBOARD = [
   [
-    { text: "💢 New Poll", callback_data: "/ban_poll_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
+    { text: "🆕 New Poll", callback_data: "/ban_poll_menu", style: "success", icon_custom_emoji_id: "6163328887813051603" },
   ],
   [
     { text: "𝐁𝐚𝐜𝐤", callback_data: "/setting_menu", style: "danger", icon_custom_emoji_id: "6210968712304923662" },
@@ -861,8 +939,8 @@ const BAN_KEYBOARD = [
 ];
 
 // =================== POLL STORE ===================
-const activeBanPolls   = new Map(); // pollId -> { chatId, msgId, userId }
-const userLastBanPoll  = new Map(); // userId -> pollId
+const activeBanPolls   = new Map();
+const userLastBanPoll  = new Map();
 
 // =================== PENDING STATE ===================
 const pendingBugUser = new Map();
@@ -998,7 +1076,7 @@ bot.action("/ban_menu", async (ctx) => {
   <li>End GB v2 (End Gb V2)</li>
 </ul>
 <hr/>
-<p><i>Klik <b>💢 New Poll</b> di bawah buat pilih metode ban lewat poll.</i></p>
+<p><i>Klik <b>🆕 New Poll</b> di bawah buat pilih metode ban lewat poll.</i></p>
 `.trim();
 
   try {
@@ -1015,7 +1093,6 @@ bot.action("/ban_poll_menu", async (ctx) => {
 
   await ctx.answerCbQuery("🆕 Buka poll ban");
 
-  // hapus poll lama user ini kalau ada
   const oldId = userLastBanPoll.get(userId);
   if (oldId) {
     const old = activeBanPolls.get(oldId);
@@ -1026,7 +1103,6 @@ bot.action("/ban_poll_menu", async (ctx) => {
     userLastBanPoll.delete(userId);
   }
 
-  // kirim pesan info + tombol back aja (tanpa End GB v1 / v2)
   await ctx.replyWithPhoto(thumbnailUrl, {
     caption: `
 💢 <b>BAN POLL</b>
@@ -1042,7 +1118,6 @@ Setelah milih, langsung kirim link grupnya.
     },
   }).catch(() => {});
 
-  // kirim poll
   const pollMsg = await ctx.telegram.sendPoll(
     chatId,
     "🌸 Mau pakai metode ban yang mana?",
@@ -1159,6 +1234,8 @@ bot.on("text", async (ctx, next) => {
     if (!isWhatsAppConnected) return ctx.reply("🪧 ☇ Tidak ada sender yang terhubung");
 
     const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
+
+    try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
 
     await ctx.reply("Succes Banned Group", {
       reply_markup: {
@@ -1298,6 +1375,13 @@ bot.action("/setting_menu", async (ctx) => {
   <li>Bug Pilih (tombol interaktif)</li>
   <li>Ban Group (tombol interaktif)</li>
 </ul>
+<h3>☰ Statistik &amp; Info</h3>
+<ul>
+  <li>/stats   → Dashboard statistik</li>
+  <li>/info    → Info sender</li>
+  <li>/history → Riwayat aktivitas</li>
+  <li>/topbug  → Top target</li>
+</ul>
 <hr/>
 <p>Security Mode : <b>ACTIVE</b></p>
 <p>Network       : <b>Hefaistos Hades Core</b></p>
@@ -1393,6 +1477,8 @@ bot.command("endgbv1", premGroupOnly(), async (ctx) => {
 
   const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
 
+  try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
+
   await ctx.reply("Succes Banned Group", {
     reply_markup: {
       inline_keyboard: [[
@@ -1431,6 +1517,8 @@ bot.command("endgbv2", premGroupOnly(), async (ctx) => {
   if (!targetInput.includes("chat.whatsapp.com/")) return ctx.reply("❌ Link gak valid. Contoh:\n<code>/endgbv2 https://chat.whatsapp.com/xxxxx</code>", { parse_mode: "HTML" });
 
   const inviteCode = String(targetInput.split("chat.whatsapp.com/")[1].split(/[?/]/)[0]);
+
+  try { logStatsBan(userId, ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name || "User"); } catch {}
 
   await ctx.reply("Succes Banned Group", {
     reply_markup: {
@@ -1709,6 +1797,226 @@ bot.command("listpremgrup", async (ctx) => {
   const d = loadPrem();
   if (!d.groups.length) return ctx.reply("📭 Belum ada grup premium.");
   ctx.reply(`📌 <b>LIST GRUP PREMIUM</b>\n\n${d.groups.map((id, i) => `${i + 1}. <code>${id}</code>`).join("\n")}`, { parse_mode: "HTML" });
+});
+
+// =================== STATISTIK & INFO COMMANDS ===================
+
+// ---------- /info ----------
+bot.command("info", checkWhatsAppConnection, async (ctx) => {
+  const uptime = formatRuntime();
+  const mem = formatMemory();
+  const ping = Date.now() % 100 + 20;
+  const version = "1.0.0-Hades";
+
+  const html = `
+<h1>🛰️ Info Sender</h1>
+<p><i>Status realtime sistem WhatsApp</i></p>
+<hr/>
+<table>
+  <tr><th>Komponen</th><th>Nilai</th></tr>
+  <tr><td>Status WA</td><td><b>${isWhatsAppConnected ? "Online ✅" : "Offline ❌"}</b></td></tr>
+  <tr><td>Uptime Bot</td><td><code>${uptime}</code></td></tr>
+  <tr><td>Memory</td><td><code>${mem}</code></td></tr>
+  <tr><td>Latency</td><td><code>${ping} ms</code></td></tr>
+  <tr><td>Node Version</td><td><code>${process.version}</code></td></tr>
+  <tr><td>Bot Version</td><td><code>${version}</code></td></tr>
+  <tr><td>Platform</td><td><code>${process.platform}</code></td></tr>
+  <tr><td>Sender Number</td><td><code>${sock?.user?.id?.split(":")[0] || "-"}</code></td></tr>
+</table>
+<hr/>
+<p><i>Terakhir update: ${moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss")} WIB</i></p>
+`.trim();
+
+  try {
+    await ctx.telegram.callApi("sendRichMessage", {
+      chat_id: ctx.chat.id, rich_message: { html },
+      reply_markup: { inline_keyboard: [[
+        { text: "🔄 Refresh", callback_data: "/info_refresh", style: "primary" },
+        { text: "🏠 Home", callback_data: "/start", style: "success" },
+      ]] },
+    });
+  } catch (err) {
+    console.log("info rich gagal:", err?.response?.description || err.message);
+    await ctx.reply(`🛰️ *INFO SENDER*\n\nStatus WA : ${isWhatsAppConnected ? "Online" : "Offline"}\nUptime : ${uptime}\nMemory : ${mem}\nNode : ${process.version}`, { parse_mode: "Markdown" });
+  }
+});
+
+bot.action("/info_refresh", async (ctx) => {
+  await ctx.answerCbQuery("🔄 Refreshing...");
+  return ctx.telegram.sendMessage(ctx.chat.id, "/info").catch(() => {});
+});
+
+// ---------- /stats ----------
+bot.command("stats", async (ctx) => {
+  const s = loadStats();
+  const day = todayWIB();
+  const today = s.per_day?.[day] || { bug: 0, ban: 0 };
+
+  const topUsers = Object.entries(s.per_user || {})
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => (b.bug_count + b.ban_count) - (a.bug_count + a.ban_count))
+    .slice(0, 5);
+
+  const topTargets = Object.entries(s.per_target || {})
+    .map(([no, c]) => ({ no, c }))
+    .sort((a, b) => b.c - a.c)
+    .slice(0, 5);
+
+  const topLabels = Object.entries(s.per_label || {})
+    .map(([l, c]) => ({ l, c }))
+    .sort((a, b) => b.c - a.c)
+    .slice(0, 5);
+
+  const totalIter = (s.total_iterasi_ok || 0) + (s.total_iterasi_fail || 0);
+  const successRate = totalIter > 0 ? ((s.total_iterasi_ok / totalIter) * 100).toFixed(1) : "0.0";
+
+  const userRows = topUsers.length
+    ? topUsers.map((u, i) => `<tr><td>${i + 1}. ${esc(u.name || "User")}</td><td>🐛 ${u.bug_count} | 🔥 ${u.ban_count}</td></tr>`).join("")
+    : `<tr><td colspan="2"><i>Belum ada data</i></td></tr>`;
+
+  const targetRows = topTargets.length
+    ? topTargets.map((t, i) => `<tr><td>${i + 1}. <code>${esc(t.no)}</code></td><td>${t.c}x</td></tr>`).join("")
+    : `<tr><td colspan="2"><i>Belum ada data</i></td></tr>`;
+
+  const labelRows = topLabels.length
+    ? topLabels.map((l, i) => `<tr><td>${i + 1}. ${esc(l.l)}</td><td>${l.c}x</td></tr>`).join("")
+    : `<tr><td colspan="2"><i>Belum ada data</i></td></tr>`;
+
+  const html = `
+<h1>📊 Dashboard Statistik</h1>
+<p><i>Rekap aktivitas bot Hefaistos Hades</i></p>
+<hr/>
+<h2>🔥 Hari Ini (${day})</h2>
+<table>
+  <tr><th>Kategori</th><th>Jumlah</th></tr>
+  <tr><td>🐛 Bug dijalankan</td><td><b>${today.bug}</b></td></tr>
+  <tr><td>🔥 Ban dijalankan</td><td><b>${today.ban}</b></td></tr>
+</table>
+<hr/>
+<h2>📈 Total Keseluruhan</h2>
+<table>
+  <tr><th>Kategori</th><th>Jumlah</th></tr>
+  <tr><td>Total Job</td><td><b>${s.total_jobs || 0}</b></td></tr>
+  <tr><td>Iterasi Sukses</td><td><b>${s.total_iterasi_ok || 0}</b></td></tr>
+  <tr><td>Iterasi Gagal</td><td><b>${s.total_iterasi_fail || 0}</b></td></tr>
+  <tr><td>Success Rate</td><td><b>${successRate}%</b></td></tr>
+</table>
+<hr/>
+<h2>🏆 Top 5 User</h2>
+<table>
+  <tr><th>User</th><th>Bug | Ban</th></tr>
+  ${userRows}
+</table>
+<hr/>
+<h2>🎯 Top 5 Target</h2>
+<table>
+  <tr><th>Nomor</th><th>Jumlah</th></tr>
+  ${targetRows}
+</table>
+<hr/>
+<h2>⚙️ Top 5 Metode</h2>
+<table>
+  <tr><th>Metode</th><th>Dipakai</th></tr>
+  ${labelRows}
+</table>
+<hr/>
+<p><i>Update: ${moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss")} WIB</i></p>
+`.trim();
+
+  try {
+    await ctx.telegram.callApi("sendRichMessage", {
+      chat_id: ctx.chat.id, rich_message: { html },
+      reply_markup: { inline_keyboard: [[
+        { text: "🔄 Refresh", callback_data: "/stats_refresh", style: "primary" },
+        { text: "🏠 Home", callback_data: "/start", style: "success" },
+      ]] },
+    });
+  } catch (err) {
+    console.log("stats rich gagal:", err?.response?.description || err.message);
+    const fb = `
+📊 *DASHBOARD STATISTIK*
+
+🔥 *Hari ini (${day})*
+• Bug : ${today.bug}
+• Ban : ${today.ban}
+
+📈 *Total*
+• Job : ${s.total_jobs || 0}
+• Iter OK : ${s.total_iterasi_ok || 0}
+• Iter Fail : ${s.total_iterasi_fail || 0}
+• Success Rate : ${successRate}%
+`.trim();
+    await ctx.reply(fb, { parse_mode: "Markdown" });
+  }
+});
+
+bot.action("/stats_refresh", async (ctx) => {
+  await ctx.answerCbQuery("🔄 Refreshing...");
+  return ctx.telegram.sendMessage(ctx.chat.id, "/stats").catch(() => {});
+});
+
+// ---------- /history ----------
+bot.command("history", async (ctx) => {
+  const s = loadStats();
+  const last = s.last_job;
+  const userHistory = Object.entries(s.per_user || {})
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => (b.iter_ok + b.iter_fail) - (a.iter_ok + a.iter_fail))
+    .slice(0, 10);
+
+  const rows = userHistory.length
+    ? userHistory.map((u, i) => `<tr><td>${i + 1}. ${esc(u.name || "User")}</td><td>🐛 ${u.bug_count} | 🔥 ${u.ban_count}</td></tr>`).join("")
+    : `<tr><td colspan="2"><i>Belum ada aktivitas</i></td></tr>`;
+
+  const lastJobTxt = last
+    ? `<p>Terakhir: <b>${esc(last.user)}</b> → <code>${esc(last.label)}</code> → <code>${esc(last.target)}</code> (${last.at})</p>`
+    : `<p><i>Belum ada job yang jalan</i></p>`;
+
+  const html = `
+<h1>📜 Riwayat Aktivitas</h1>
+<p><i>Log aktivitas terakhir</i></p>
+<hr/>
+${lastJobTxt}
+<hr/>
+<h2>👥 Top Aktif (semua waktu)</h2>
+<table>
+  <tr><th>User</th><th>Bug | Ban</th></tr>
+  ${rows}
+</table>
+<hr/>
+<p><i>Update: ${moment().tz("Asia/Jakarta").format("DD-MM-YYYY HH:mm:ss")} WIB</i></p>
+`.trim();
+
+  try {
+    await ctx.telegram.callApi("sendRichMessage", {
+      chat_id: ctx.chat.id, rich_message: { html },
+      reply_markup: { inline_keyboard: [[
+        { text: "🔄 Refresh", callback_data: "/history_refresh", style: "primary" },
+        { text: "🏠 Home", callback_data: "/start", style: "success" },
+      ]] },
+    });
+  } catch (err) {
+    await ctx.reply(`📜 *RIWAYAT AKTIVITAS*\n\nTerakhir: ${last ? `${last.user} → ${last.label}` : "-"}`, { parse_mode: "Markdown" });
+  }
+});
+
+bot.action("/history_refresh", async (ctx) => {
+  await ctx.answerCbQuery("🔄 Refreshing...");
+  return ctx.telegram.sendMessage(ctx.chat.id, "/history").catch(() => {});
+});
+
+// ---------- /topbug ----------
+bot.command("topbug", async (ctx) => {
+  const s = loadStats();
+  const top = Object.entries(s.per_target || {})
+    .map(([no, c]) => ({ no, c }))
+    .sort((a, b) => b.c - a.c)
+    .slice(0, 10);
+
+  if (!top.length) return ctx.reply("📭 Belum ada data target.");
+
+  const rows = top.map((t, i) => `${i + 1}. <code>${esc(t.no)}</code> — ${t.c}x`).join("\n");
+  return ctx.reply(`🎯 <b>TOP 10 TARGET</b>\n\n${rows}`, { parse_mode: "HTML" });
 });
 
 // =================== TIC TAC TOE ===================
