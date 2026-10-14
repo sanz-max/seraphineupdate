@@ -1,4 +1,5 @@
 {
   "domain": "http://makkaupanel.mbgwowo.web.id",
-  "port": 2006
+  "port": 2006,
+  "dramaUpstream": "http://makkaupanel.mbgwowo.web.id"
 }
