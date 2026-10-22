@@ -1,5 +1,5 @@
 {
-  "domain": "http://165.245.189.223",
-  "port": 2133,
-  "dramaUpstream": "http://165.245.189.223"
+  "domain": "http://jaysuhanzupanel.r-cloud.my.id:25578",
+  "port": 25578,
+  "dramaUpstream": "http://jaysuhanzupanel.r-cloud.my.id:25578"
 }
