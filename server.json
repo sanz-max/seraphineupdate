@@ -1,5 +1,5 @@
 {
-  "domain": "http://ungkw.r-cloud.web.id",
-  "port": 25590,
-  "dramaUpstream": "http://ungkw.r-cloud.web.id:25590"
+  "domain": "https://ungcxpanel.nebuladnezar.web.id",
+  "port": 2010,
+  "dramaUpstream": "https://ungcxpanel.nebuladnezar.web.id:201/"
 }
