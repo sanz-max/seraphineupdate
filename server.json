@@ -1,5 +1,5 @@
 {
-  "domain": "https://ungcxpanel.nebuladnezar.web.id",
+  "domain": "http://ungcxpanel.nebuladnezar.web.id",
   "port": 2010,
-  "dramaUpstream": "https://ungcxpanel.nebuladnezar.web.id:2010"
+  "dramaUpstream": "http://ungcxpanel.nebuladnezar.web.id:2010"
 }
