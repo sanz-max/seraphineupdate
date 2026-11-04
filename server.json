@@ -1,5 +1,5 @@
 {
-  "domain": "http://168.144.242.91",
-  "port": 2070,
-  "dramaUpstream": "http://168.144.242.91:2070"
+  "domain": "http://168.144.189.99",
+  "port": 2077,
+  "dramaUpstream": "http://168.144.189.99:2077"
 }
